@@ -1,0 +1,57 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2022"
+    ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/contracts/**/*",
+    "src/lib/community/**/*",
+    "src/lib/goals/**/*",
+    "src/lib/artist-growth.ts",
+    "src/lib/artist-world.ts",
+    "src/lib/distribution-request.ts",
+    "src/lib/feedback.ts",
+    "src/lib/id-integration.ts",
+    "src/lib/path-stages.ts",
+    "src/lib/recommendation-logging.ts",
+    "src/lib/recommendations.ts",
+    "src/lib/track-next-steps.ts",
+    "src/lib/user-path-stage.ts",
+    "src/components/home/**/*",
+    "src/components/recommendations/**/*"
+  ]
+}
