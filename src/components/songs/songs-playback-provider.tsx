@@ -347,7 +347,6 @@ export function SongsPlaybackProvider({ children }: { children: React.ReactNode 
   }
 
   function openPlayerWindow() {
-    if (!activeItem) return;
     setIsPlayerWindowOpen(true);
   }
 
@@ -356,7 +355,6 @@ export function SongsPlaybackProvider({ children }: { children: React.ReactNode 
   }
 
   function togglePlayerWindow() {
-    if (!activeItem) return;
     setIsPlayerWindowOpen((prev) => !prev);
   }
 

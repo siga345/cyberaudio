@@ -28,6 +28,8 @@ export type MultiTrackRecorderSessionSnapshot = {
   songKeyMode: "minor" | "major";
   songKeyAutoEnabled: boolean;
   selectedLayerId: string | null;
+  recordingState: "idle" | "recording" | "paused";
+  recordingSeconds: number;
   layers: Array<{
     id: string;
     kind: "import" | "recording";
@@ -92,19 +94,19 @@ export const MultiTrackRecorder = forwardRef<MultiTrackRecorderHandle, MultiTrac
   } = recorder;
 
   return (
-    <div className="space-y-4 rounded-3xl border border-brand-border bg-white/85 p-4 shadow-[0_18px_45px_rgba(61,84,46,0.08)]">
+    <div className="space-y-4 rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-4">
       {/* Header */}
-      <div className="rounded-2xl border border-brand-border bg-gradient-to-br from-[#f8fbf3] to-[#edf4e6] p-4">
+      <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.02)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-muted">Multitrack Recorder</p>
-            <h3 className="text-xl font-semibold tracking-tight text-brand-ink">Demo Session</h3>
-            <p className="mt-1 text-sm text-brand-muted">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-cyan/68">Multitrack Recorder</p>
+            <h3 className="text-xl font-semibold tracking-tight text-brand-cyan">Demo Session</h3>
+            <p className="mt-1 text-sm text-brand-cyan/68">
               Пошаговая запись дорожек, FX, панорама, preview и финальный render под ваш demo flow.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" className="border-brand-border bg-white" onClick={() => resetRecorderSession()}>
+            <Button variant="secondary" onClick={() => resetRecorderSession()}>
               Очистить рекордер
             </Button>
           </div>
@@ -149,17 +151,20 @@ export const MultiTrackRecorder = forwardRef<MultiTrackRecorderHandle, MultiTrac
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-brand-border bg-white/80 p-2">
+      <div className="grid grid-cols-3 gap-2 rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.02)] p-2">
         {([{ id: "tracks", label: "Tracks" }, { id: "fx", label: "FX" }, { id: "mix", label: "Mix" }] as const).map((item) => (
-          <Button
+          <button
             key={item.id}
             type="button"
-            variant={tab === item.id ? "primary" : "secondary"}
-            className={tab === item.id ? "" : "border-brand-border bg-white"}
             onClick={() => setTab(item.id)}
+            className={`min-h-[3.25rem] rounded-[6px] border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition ${
+              tab === item.id
+                ? "border-[rgba(241,222,98,0.48)] bg-[rgba(241,222,98,0.12)] text-brand-primary"
+                : "border-white/12 bg-[rgba(255,255,255,0.03)] text-brand-cyan/72 hover:text-brand-cyan"
+            }`}
           >
             {item.label}
-          </Button>
+          </button>
         ))}
       </div>
 
@@ -198,7 +203,7 @@ export const MultiTrackRecorder = forwardRef<MultiTrackRecorderHandle, MultiTrac
 
       {/* Mix tab */}
       {tab === "mix" && (
-        <div className="space-y-4 rounded-2xl border border-brand-border bg-white p-4">
+        <div className="space-y-4 rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.02)] p-4">
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" onClick={() => void renderStemsPreview()} disabled={stemsPreviewStatus === "processing" || mixing || !layers.length}>
               {stemsPreviewStatus === "processing" ? "Собираем preview..." : "Собрать preview mix"}
@@ -206,28 +211,28 @@ export const MultiTrackRecorder = forwardRef<MultiTrackRecorderHandle, MultiTrac
             <Button type="button" onClick={() => void renderMixdown()} disabled={mixing || !layers.length}>
               {mixing ? "Rendering..." : "Render Mix"}
             </Button>
-            <p className="text-sm text-brand-muted">Финальный `Render Mix` передаст WAV в demo-flow для сохранения.</p>
+            <p className="text-sm text-brand-cyan/68">Финальный `Render Mix` передаст WAV в demo-flow для сохранения.</p>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-brand-border bg-[#f7faf2] p-3">
-              <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-muted">Preview Mix</p>
+            <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-3">
+              <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-cyan/68">Preview Mix</p>
               {stemsPreviewUrl ? (
                 <AudioWaveformPlayer src={stemsPreviewUrl} />
               ) : (
-                <p className="rounded-lg border border-dashed border-brand-border bg-white p-3 text-sm text-brand-muted">
+                <p className="rounded-[6px] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] p-3 text-sm text-brand-cyan/68">
                   Нажмите `Собрать preview mix`.
                 </p>
               )}
-              {stemsPreviewError && <p className="mt-2 text-xs text-[#a4372a]">{stemsPreviewError}</p>}
+              {stemsPreviewError && <p className="mt-2 text-xs text-brand-primary">{stemsPreviewError}</p>}
             </div>
 
-            <div className="rounded-xl border border-brand-border bg-[#f7faf2] p-3">
-              <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-muted">Final Render</p>
+            <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-3">
+              <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-cyan/68">Final Render</p>
               {mixPreviewUrl ? (
                 <AudioWaveformPlayer src={mixPreviewUrl} />
               ) : (
-                <p className="rounded-lg border border-dashed border-brand-border bg-white p-3 text-sm text-brand-muted">
+                <p className="rounded-[6px] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] p-3 text-sm text-brand-cyan/68">
                   После `Render Mix` здесь появится финальный preview (stereo WAV).
                 </p>
               )}

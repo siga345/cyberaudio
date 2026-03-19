@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { PlaybackIcon } from "@/components/songs/playback-icon";
 import { useSongsPlayback } from "@/components/songs/songs-playback-provider";
-import { playbackAccentButtonStyle } from "@/lib/songs-playback-helpers";
 import { cn } from "@/lib/utils";
 
 function formatClock(seconds: number) {
@@ -18,49 +15,12 @@ function formatClock(seconds: number) {
 }
 
 function buildMiniBars(count: number) {
-  return Array.from({ length: count }, (_, idx) => 0.2 + (((idx * 17) % 10) / 10) * 0.75);
-}
-
-function hexToRgb(color: string) {
-  const value = color.trim();
-  const hex = value.startsWith("#") ? value.slice(1) : value;
-  if (hex.length === 3) {
-    const [r, g, b] = hex.split("");
-    const rr = Number.parseInt(`${r}${r}`, 16);
-    const gg = Number.parseInt(`${g}${g}`, 16);
-    const bb = Number.parseInt(`${b}${b}`, 16);
-    if ([rr, gg, bb].some((item) => Number.isNaN(item))) return null;
-    return { r: rr, g: gg, b: bb };
-  }
-  if (hex.length !== 6) return null;
-  const rr = Number.parseInt(hex.slice(0, 2), 16);
-  const gg = Number.parseInt(hex.slice(2, 4), 16);
-  const bb = Number.parseInt(hex.slice(4, 6), 16);
-  if ([rr, gg, bb].some((item) => Number.isNaN(item))) return null;
-  return { r: rr, g: gg, b: bb };
-}
-
-function mixHexColors(colorA: string, colorB: string, ratio: number) {
-  const a = hexToRgb(colorA);
-  const b = hexToRgb(colorB);
-  if (!a || !b) return null;
-  const t = Math.min(Math.max(ratio, 0), 1);
-  const r = Math.round(a.r + (b.r - a.r) * t);
-  const g = Math.round(a.g + (b.g - a.g) * t);
-  const bCh = Math.round(a.b + (b.b - a.b) * t);
-  return `rgb(${r}, ${g}, ${bCh})`;
-}
-
-function rgbaFromHex(color: string, alpha: number) {
-  const rgb = hexToRgb(color);
-  if (!rgb) return null;
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+  return Array.from({ length: count }, (_, idx) => 0.22 + (((idx * 17) % 9) / 9) * 0.62);
 }
 
 const progressBars = buildMiniBars(42);
 
 export function SongsMiniPlayerDock() {
-  const pathname = usePathname();
   const {
     activeItem,
     playing,
@@ -73,61 +33,53 @@ export function SongsMiniPlayerDock() {
   } = useSongsPlayback();
 
   if (!activeItem) return null;
-  const hasSongsQuickAddFab = pathname === "/songs";
-
   const progress = duration > 0 ? currentTime / duration : 0;
-  const playAccentStyle = playbackAccentButtonStyle(activeItem.cover);
-  const coverColorA = activeItem.cover?.colorA || "#f8ef00";
-  const coverColorB = activeItem.cover?.colorB || "#49f6ff";
-  const mutedTrackBarsColor =
-    rgbaFromHex(mixHexColors(coverColorA, coverColorB, 0.5) || coverColorB, 0.22) || "rgba(73,246,255,0.22)";
+  const linkHref = activeItem.linkHref ?? `/songs/${activeItem.trackId}`;
 
   return (
-    <div
-      className={cn(
-        "pointer-events-none fixed inset-x-0 bottom-[5.7rem] z-40 px-3 md:bottom-[5.8rem] md:px-4",
-        hasSongsQuickAddFab && "pr-[5.25rem] md:pr-4"
-      )}
-    >
-      <div className="pointer-events-auto cyber-panel relative mx-auto max-w-5xl rounded-[24px] p-2.5 text-brand-ink shadow-neon backdrop-blur-xl md:p-3">
+    <div className={cn("pointer-events-none fixed inset-x-0 bottom-3 z-40 px-3 md:bottom-4")}>
+      <div
+        className="pointer-events-auto relative mx-auto w-full max-w-[min(32rem,calc(100%-5.5rem))] overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(25,19,24,0.94),rgba(13,10,14,0.98))] px-4 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.48)] backdrop-blur-xl"
+        onClick={() => openPlayerWindow()}
+      >
         <button
           type="button"
-          onClick={clear}
-          className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-brand-border bg-[rgba(14,22,40,0.92)] text-brand-muted transition hover:border-brand-magenta hover:text-brand-magenta"
+          onClick={(event) => {
+            event.stopPropagation();
+            clear();
+          }}
+          className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full border border-white/12 bg-[rgba(255,255,255,0.03)] text-brand-muted transition hover:border-white/24 hover:text-brand-cyan"
           aria-label="Закрыть плеер"
         >
           <X className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-2 pr-9 md:gap-3">
+        <div className="flex items-center gap-3 pr-9">
           <button
             type="button"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border shadow-[0_8px_16px_rgba(61,84,46,0.18)] hover:brightness-95 md:h-10 md:w-10"
-            style={playAccentStyle}
-            onClick={() => toggle(activeItem)}
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] border border-[rgba(240,220,99,0.85)] bg-[linear-gradient(180deg,#f6e67e,#e5cd47)] text-[#090908] shadow-[0_12px_28px_rgba(0,0,0,0.38)] hover:brightness-105"
+            onClick={(event) => {
+              event.stopPropagation();
+              toggle(activeItem);
+            }}
             aria-label={playing ? "Pause" : "Play"}
           >
             <PlaybackIcon type={playing ? "pause" : "play"} className="h-4 w-4" />
           </button>
 
-          <div
-            className="min-w-0 flex-1 cursor-pointer"
-            onClick={openPlayerWindow}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                openPlayerWindow();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label="Открыть полный плеер"
-          >
-            <p className="truncate text-sm font-semibold leading-tight">{activeItem.title}</p>
-            <p className="truncate text-[11px] text-brand-muted md:text-xs">{activeItem.subtitle}</p>
+          <div className="min-w-0 flex-1">
+            <Link
+              href={linkHref}
+              className="block"
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              <p className="truncate font-[var(--font-body)] text-xl font-semibold leading-none text-brand-ink">{activeItem.title}</p>
+              <p className="mt-1 truncate text-sm text-brand-muted">{activeItem.subtitle}</p>
+            </Link>
 
-            <div className="mt-1.5 flex items-center gap-1.5 md:mt-2 md:gap-2">
-              <span className="hidden w-9 text-[11px] text-brand-muted sm:block">{formatClock(currentTime)}</span>
-              <div className="relative h-7 flex-1 overflow-hidden rounded-xl border border-brand-border bg-[rgba(8,17,32,0.82)] px-2">
+            <div className="mt-2 flex items-center gap-2">
+              <div className="relative h-8 flex-1 overflow-hidden rounded-[14px] border border-white/10 bg-[rgba(255,255,255,0.04)] px-2">
                 <div className="flex h-full w-full items-center gap-[2px]">
                   {progressBars.map((height, idx) => {
                     const ratio = progressBars.length <= 1 ? 0 : idx / (progressBars.length - 1);
@@ -137,8 +89,8 @@ export function SongsMiniPlayerDock() {
                         key={`${idx}-${height}`}
                         className="block min-w-0 flex-1 rounded-full"
                         style={{
-                          height: `${Math.max(18, Math.round(26 * height))}px`,
-                          backgroundColor: filled ? mixHexColors(coverColorA, coverColorB, ratio) || coverColorB : mutedTrackBarsColor
+                          height: `${Math.max(14, Math.round(24 * height))}px`,
+                          backgroundColor: filled ? "#f0dc63" : "rgba(255,255,255,0.18)"
                         }}
                       />
                     );
@@ -159,15 +111,11 @@ export function SongsMiniPlayerDock() {
                   aria-label="Seek playback"
                 />
               </div>
-              <span className="hidden w-9 text-right text-[11px] text-brand-muted sm:block">{formatClock(duration)}</span>
+              <span className="w-20 text-right text-sm text-brand-muted">
+                {formatClock(currentTime)} / {formatClock(duration)}
+              </span>
             </div>
           </div>
-
-          {activeItem.linkHref && (
-            <Link href={activeItem.linkHref} className="hidden sm:block">
-              <Button variant="secondary">Версии</Button>
-            </Link>
-          )}
         </div>
       </div>
     </div>

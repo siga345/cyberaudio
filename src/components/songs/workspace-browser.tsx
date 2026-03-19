@@ -1,31 +1,43 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Disc3, FolderOpen, Search } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { apiFetch, apiFetchJson } from "@/lib/client-fetch";
 import { projectDefaultCoverForKind } from "@/lib/project-cover-style";
 import { pickPreferredPlaybackDemo } from "@/lib/songs-playback-helpers";
 import { getProjectOpenHref, type ProjectReleaseKind } from "@/lib/songs-project-navigation";
 import { useSongsPlayback, type SongsPlaybackItem } from "@/components/songs/songs-playback-provider";
+import { HudChip, HudOverlayMenu, HudPanel, HudScreen, HudTopBar } from "@/components/layout/hud-shell";
 import { DeleteFolderModal } from "@/components/songs/delete-folder-modal";
+import {
+  HudFolderGlyph,
+  HudPlusGlyph,
+  HudPlayGlyph,
+  HudProjectGlyph,
+  HudRecordGlyph
+} from "@/components/songs/hud-glyphs";
 import { MoveNodeModal } from "@/components/songs/move-node-modal";
 import { WorkspaceFolderTile } from "@/components/songs/workspace-folder-tile";
 import { WorkspaceGrid } from "@/components/songs/workspace-grid";
 import { WorkspaceProjectTile } from "@/components/songs/workspace-project-tile";
 import type { FolderListItem, WorkspaceNode, WorkspaceNodesResponse, WorkspaceProjectNode } from "@/components/songs/workspace-types";
+import { cn } from "@/lib/utils";
 
 type WorkspaceBrowserProps = {
   parentFolderId: string | null;
   externalQuery?: string;
   showHeader?: boolean;
   showCreateActions?: boolean;
+  libraryMode?: boolean;
+  minimalRoot?: boolean;
+  floatingCreateButton?: boolean;
   className?: string;
   onChanged?: () => Promise<void> | void;
 };
@@ -140,9 +152,13 @@ export function WorkspaceBrowser({
   externalQuery,
   showHeader = true,
   showCreateActions = true,
+  libraryMode = false,
+  minimalRoot = false,
+  floatingCreateButton = false,
   className,
   onChanged
 }: WorkspaceBrowserProps) {
+  const router = useRouter();
   const playback = useSongsPlayback();
   const [localQuery, setLocalQuery] = useState("");
   const [error, setError] = useState("");
@@ -154,6 +170,7 @@ export function WorkspaceBrowser({
   const [deleteEmptyFolderPrompt, setDeleteEmptyFolderPrompt] = useState<FolderDeletePromptState | null>(null);
   const [renameProjectPrompt, setRenameProjectPrompt] = useState<ProjectRenamePromptState | null>(null);
   const [deleteProjectPrompt, setDeleteProjectPrompt] = useState<ProjectDeletePromptState | null>(null);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newFolderTitle, setNewFolderTitle] = useState("");
@@ -163,6 +180,7 @@ export function WorkspaceBrowser({
   const [creatingProject, setCreatingProject] = useState(false);
 
   const query = externalQuery ?? localQuery;
+  const isLibraryMode = libraryMode || minimalRoot;
 
   const {
     data: workspace,
@@ -559,178 +577,33 @@ export function WorkspaceBrowser({
 
   function openCreateProject(kind: ProjectReleaseKind) {
     setNewProjectReleaseKind(kind);
-    setShowCreateProject((prev) => (prev && newProjectReleaseKind === kind ? false : true));
+    setShowCreateProject(true);
+    setShowCreateMenu(false);
   }
 
-  return (
-    <Card
-      className={
-        className ??
-        "relative overflow-hidden rounded-[22px] border border-brand-border bg-[linear-gradient(145deg,rgba(14,22,40,0.98),rgba(8,13,24,0.98))] p-0 shadow-neon md:rounded-3xl"
-      }
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(73,246,255,0.18),transparent_35%),radial-gradient(circle_at_100%_100%,rgba(255,79,216,0.12),transparent_42%)]" />
-      {showHeader && (
-        <div className="relative border-b border-brand-border px-3 py-3 md:px-5 md:py-4">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(248,239,0,0.16),transparent_38%)]" />
-          <div className="relative flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <Badge className="bg-[rgba(73,246,255,0.08)] px-2 py-0.5 text-[11px] md:px-2.5 md:py-1 md:text-xs">
-                  <span className="-rotate-6 mr-1 inline-flex h-4 w-4 items-center justify-center rounded-md border border-brand-border bg-[rgba(14,22,40,0.92)] shadow-[0_0_16px_rgba(73,246,255,0.12)] md:h-5 md:w-5">
-                    <Disc3 className="h-3 w-3 text-brand-ink" />
-                  </span>
-                  Рабочая зона
-                </Badge>
-              </div>
-              {workspace?.breadcrumbs?.length ? (
-                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-brand-muted">
-                  {workspace.currentFolder && (
-                    <Link
-                      href={getWorkspaceHref(workspace.currentFolder.parentFolderId ?? null)}
-                      className="rounded-lg border border-brand-border bg-[rgba(14,22,40,0.88)] px-2 py-0.5 text-xs text-brand-ink hover:border-brand-cyan hover:text-brand-cyan md:px-2 md:py-1 md:text-sm"
-                    >
-                      ← Назад
-                    </Link>
-                  )}
-                  <nav aria-label="Путь папок" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    {workspace.breadcrumbs.map((crumb, index) => {
-                      const isLast = index === workspace.breadcrumbs.length - 1;
-                      return (
-                        <span key={`${crumb.id ?? "root"}:${index}`} className="inline-flex min-w-0 items-center gap-2">
-                          {isLast ? (
-                            <span className="max-w-[220px] truncate text-xs text-brand-ink md:max-w-[240px] md:text-sm">{crumb.title}</span>
-                          ) : (
-                            <Link
-                              href={getWorkspaceHref(crumb.id)}
-                              className="max-w-[160px] truncate text-xs hover:text-brand-ink hover:underline md:max-w-[180px] md:text-sm"
-                            >
-                              {crumb.title}
-                            </Link>
-                          )}
-                          {!isLast && <span aria-hidden>›</span>}
-                        </span>
-                      );
-                    })}
-                  </nav>
-                </div>
-              ) : null}
-              <h2 className="text-lg font-semibold tracking-tight text-brand-ink md:text-xl">
-                {workspace?.currentFolder?.title ?? "Проекты и папки"}
-              </h2>
-              <p className="mt-1 text-xs text-brand-muted md:text-sm">
-                {levelFolderCount} папок • {levelProjectCount} проектов на текущем уровне
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {showCreateActions && (
-                <>
-                  <Button
-                    variant="secondary"
-                    className="h-9 rounded-xl px-3 text-sm md:h-10"
-                    onClick={() => setShowCreateFolder((prev) => !prev)}
-                  >
-                    <FolderOpen className="h-4 w-4" />
-                    + Папка
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="h-9 rounded-xl px-3 text-sm md:h-10"
-                    onClick={() => openCreateProject("SINGLE")}
-                  >
-                    <Disc3 className="h-4 w-4" />
-                    + Сингл
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="h-9 rounded-xl px-3 text-sm md:h-10"
-                    onClick={() => openCreateProject("ALBUM")}
-                  >
-                    <Disc3 className="h-4 w-4" />
-                    + Альбом
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {externalQuery === undefined && (
-            <div className="mt-3 rounded-2xl border border-brand-border bg-[rgba(10,18,34,0.84)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-sm">
-              <label className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
-                <Input
-                  value={localQuery}
-                  onChange={(event) => setLocalQuery(event.target.value)}
-                  placeholder="Поиск по текущему уровню..."
-                  className="h-10 pl-9 md:h-11"
-                />
-              </label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="inline-flex items-center rounded-lg border border-brand-border bg-[rgba(14,22,40,0.88)] px-2 py-0.5 text-[11px] text-brand-muted md:rounded-xl md:px-2.5 md:py-1 md:text-xs">
-                  Видно папок: <span className="ml-1 font-medium text-brand-ink">{visibleFolderCount}</span>
-                </span>
-                <span className="inline-flex items-center rounded-lg border border-brand-border bg-[rgba(14,22,40,0.88)] px-2 py-0.5 text-[11px] text-brand-muted md:rounded-xl md:px-2.5 md:py-1 md:text-xs">
-                  Видно проектов: <span className="ml-1 font-medium text-brand-ink">{visibleProjectCount}</span>
-                </span>
-              </div>
-            </div>
+  const browserGrid = (
+    <>
+      {error ? (
+        <p
+          className={cn(
+            "rounded-[18px] border border-brand-magenta/50 bg-brand-magenta/10 px-4 py-3 text-sm text-brand-magenta",
+            isLibraryMode ? "" : "mt-4"
           )}
+        >
+          {error}
+        </p>
+      ) : null}
 
-          {(showCreateFolder || showCreateProject) && (
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {showCreateFolder && (
-                <div className="relative overflow-hidden rounded-xl border border-brand-border bg-[rgba(10,18,34,0.92)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:rounded-2xl md:p-3">
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-cyan to-transparent" />
-                  <p className="mb-2 text-xs font-medium text-brand-ink md:text-sm">Новая папка</p>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newFolderTitle}
-                      onChange={(event) => setNewFolderTitle(event.target.value)}
-                      placeholder="Название папки"
-                      className=""
-                    />
-                    <Button className="h-10 rounded-xl px-3 text-sm" onClick={createFolder} disabled={creatingFolder || !newFolderTitle.trim()}>
-                      {creatingFolder ? "..." : "Создать"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {showCreateProject && (
-                <div className="relative overflow-hidden rounded-xl border border-brand-border bg-[rgba(10,18,34,0.92)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:rounded-2xl md:p-3">
-                  <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${newProjectReleaseKind === "SINGLE" ? "from-brand-primary to-transparent" : "from-brand-magenta via-brand-cyan to-transparent"}`} />
-                  <p className="mb-1 text-xs font-medium text-brand-ink md:text-sm">
-                    Новый {newProjectReleaseKind === "SINGLE" ? "сингл" : "альбом"}
-                  </p>
-                  <p className="mb-2 text-[11px] text-brand-muted md:text-xs">
-                    {newProjectReleaseKind === "SINGLE"
-                      ? "Сингл открывается сразу в версии, когда внутри появится 1 трек."
-                      : "Альбом сохраняет текущую страницу проекта и плейлист треков."}
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newProjectTitle}
-                      onChange={(event) => setNewProjectTitle(event.target.value)}
-                      placeholder={newProjectReleaseKind === "SINGLE" ? "Название сингла" : "Название альбома"}
-                      className=""
-                    />
-                    <Button className="h-10 rounded-xl px-3 text-sm" onClick={createProject} disabled={creatingProject || !newProjectTitle.trim()}>
-                      {creatingProject ? "..." : "Создать"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {error && <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
-        </div>
-      )}
-
-      {!showHeader && error && <div className="p-3 pb-0 md:p-4 md:pb-0"><p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p></div>}
-
-      <div className="relative p-3 md:p-5">
+      <div className={cn(isLibraryMode ? "" : "mt-5")}>
         {workspaceLoading ? (
-          <div className="rounded-2xl border border-brand-border bg-[rgba(10,18,34,0.84)] p-4 text-sm text-brand-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">Загрузка workspace...</div>
+          <div
+            className={cn(
+              "rounded-[22px] border border-brand-border bg-[rgba(14,7,12,0.86)] p-4 text-sm text-brand-muted",
+              isLibraryMode ? "min-h-[14rem]" : ""
+            )}
+          >
+            Загрузка workspace...
+          </div>
         ) : (
           <>
             <WorkspaceGrid
@@ -743,7 +616,7 @@ export function WorkspaceBrowser({
                 const menuOpen = menuKey === key;
                 const menu = (
                   <div
-                    className="absolute right-0 top-10 z-10 min-w-[200px] rounded-2xl border border-brand-border bg-[rgba(8,17,32,0.96)] p-2 shadow-neon"
+                    className="absolute right-0 top-11 z-10 min-w-[220px] rounded-[20px] border border-brand-border bg-[rgba(12,6,10,0.98)] p-2 shadow-neon"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -751,18 +624,18 @@ export function WorkspaceBrowser({
                       <>
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-ink hover:bg-[rgba(73,246,255,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             void togglePin(node);
                           }}
                         >
-                          {node.pinnedAt ? "Открепить папку" : "Закрепить папку"}
+                          {node.pinnedAt ? "Открепить" : "Закрепить"}
                         </button>
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-ink hover:bg-[rgba(73,246,255,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -770,30 +643,30 @@ export function WorkspaceBrowser({
                             setMenuKey("");
                           }}
                         >
-                          Переместить папку
+                          Переместить
                         </button>
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-ink hover:bg-[rgba(73,246,255,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             void emptyFolder(node.id);
                           }}
                         >
-                          Очистить папку
+                          Очистить
                         </button>
                         <div className="my-1 h-px bg-brand-border/40" />
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-magenta hover:bg-[rgba(255,79,216,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-magenta hover:bg-brand-magenta/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             requestDeleteFolder(node);
                           }}
                         >
-                          Удалить папку
+                          Удалить
                         </button>
                       </>
                     ) : (
@@ -804,7 +677,7 @@ export function WorkspaceBrowser({
                             releaseKind: node.projectMeta.releaseKind ?? "ALBUM",
                             singleTrackId: node.projectMeta.singleTrackId ?? null
                           })}
-                          className="block rounded-xl px-3 py-2 text-sm text-brand-ink hover:bg-[rgba(73,246,255,0.08)]"
+                          className="block rounded-[14px] px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
                           onClick={(event) => {
                             event.stopPropagation();
                             setMenuKey("");
@@ -814,18 +687,18 @@ export function WorkspaceBrowser({
                         </Link>
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-ink hover:bg-[rgba(73,246,255,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             void togglePin(node);
                           }}
                         >
-                          {node.pinnedAt ? "Открепить проект" : "Закрепить проект"}
+                          {node.pinnedAt ? "Открепить" : "Закрепить"}
                         </button>
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-ink hover:bg-[rgba(73,246,255,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -833,30 +706,30 @@ export function WorkspaceBrowser({
                             setMenuKey("");
                           }}
                         >
-                          Переместить проект
+                          Переместить
                         </button>
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-ink hover:bg-[rgba(73,246,255,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             requestProjectRename(node);
                           }}
                         >
-                          Переименовать проект
+                          Переименовать
                         </button>
                         <div className="my-1 h-px bg-brand-border/40" />
                         <button
                           type="button"
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-magenta hover:bg-[rgba(255,79,216,0.08)]"
+                          className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-magenta hover:bg-brand-magenta/10"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             requestProjectDelete(node);
                           }}
                         >
-                          Удалить проект
+                          Удалить
                         </button>
                       </>
                     )}
@@ -893,14 +766,264 @@ export function WorkspaceBrowser({
               }}
             />
 
-            {!filteredNodes.length && (
-              <div className="mt-4 rounded-2xl border border-dashed border-brand-border bg-[rgba(10,18,34,0.84)] p-4 text-sm text-brand-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+            {!filteredNodes.length ? (
+              <div
+                className={cn(
+                  "rounded-[22px] border border-dashed border-brand-border bg-[rgba(16,7,12,0.86)] p-5 text-sm text-brand-muted",
+                  isLibraryMode ? "mt-6" : "mt-4"
+                )}
+              >
                 В этом уровне пока пусто.
               </div>
-            )}
+            ) : null}
           </>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <>
+      {isLibraryMode ? (
+        <section className={cn("space-y-4", className)}>
+          {workspace?.currentFolder ? (
+            <header className="flex items-center gap-3 px-1 pb-1">
+              <Link
+                href={getWorkspaceHref(workspace.currentFolder.parentFolderId)}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] border border-brand-border bg-[rgba(18,7,12,0.88)] text-brand-cyan transition hover:border-brand-cyan/60 hover:text-brand-primary"
+                aria-label="Назад"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-brand-muted">Папка</p>
+                <h1 className="truncate font-[var(--font-display)] text-[1.9rem] uppercase tracking-[0.08em] text-brand-cyan">
+                  {workspace.currentFolder.title}
+                </h1>
+              </div>
+            </header>
+          ) : null}
+          {browserGrid}
+        </section>
+      ) : (
+        <HudScreen className={className}>
+          {showHeader ? (
+            <HudTopBar
+              kicker={workspace?.currentFolder ? "Folder Node" : "Workspace Matrix"}
+              title={workspace?.currentFolder?.title ?? "Projects / Folders"}
+              description={
+                workspace?.currentFolder
+                  ? "Внутри папки доступны вложенные узлы каталога, быстрые действия и переходы к синглам или альбомам."
+                  : "Главный экран каталога. Здесь пользователь сразу видит свои папки, синглы и альбомы без промежуточного recorder-landing."
+              }
+              breadcrumbs={
+                workspace?.breadcrumbs?.map((crumb) => ({
+                  href: crumb.id === null ? "/songs" : crumb.id ? `/songs/folders/${crumb.id}` : undefined,
+                  label: crumb.title
+                })) ?? [{ label: "Workspace" }]
+              }
+              tabs={[
+                { href: "/songs", label: "Workspace", active: parentFolderId === null, icon: <HudProjectGlyph /> },
+                { href: "/songs/record", label: "Recorder", icon: <HudRecordGlyph /> },
+                { href: "/songs/archive", label: "Archive", icon: <HudPlayGlyph /> }
+              ]}
+              stats={[
+                { label: "Folders", value: levelFolderCount, tone: "cyan" },
+                { label: "Projects", value: levelProjectCount, tone: "yellow" },
+                { label: "Visible", value: filteredNodes.length, tone: "red" }
+              ]}
+              action={
+                showCreateActions ? (
+                  <Button className="min-w-[13rem]" onClick={() => setShowCreateMenu(true)}>
+                    <HudPlusGlyph />
+                    New Command
+                  </Button>
+                ) : null
+              }
+            />
+          ) : null}
+
+          <HudPanel
+            kicker="Node Scan"
+            title="Workspace Browser"
+            description="Поиск, фильтрация и группировка на текущем уровне каталога."
+          >
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              {externalQuery === undefined ? (
+                <label className="relative block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
+                  <Input
+                    value={localQuery}
+                    onChange={(event) => setLocalQuery(event.target.value)}
+                    placeholder="Search current level"
+                    className="h-11 pl-9"
+                  />
+                </label>
+              ) : (
+                <div className="rounded-[18px] border border-brand-border bg-[rgba(20,7,13,0.86)] px-4 py-3 text-sm text-brand-muted">
+                  Внешний поисковый запрос активен.
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <HudChip tone="muted">Visible folders {visibleFolderCount}</HudChip>
+                <HudChip tone="muted">Visible projects {visibleProjectCount}</HudChip>
+                {workspace?.currentFolder ? <HudChip tone="cyan">Depth {workspace.currentFolder.depth + 1}</HudChip> : null}
+              </div>
+            </div>
+            {browserGrid}
+          </HudPanel>
+        </HudScreen>
+      )}
+
+      {floatingCreateButton && showCreateActions ? (
+        <>
+          {showCreateMenu ? (
+            <button
+              type="button"
+              className="fixed inset-0 z-[54] bg-[rgba(2,0,7,0.28)]"
+              onClick={() => setShowCreateMenu(false)}
+              aria-label="Close create menu"
+            />
+          ) : null}
+          {showCreateMenu ? (
+            <div className="fixed bottom-24 right-4 z-[60] flex flex-col items-end gap-3 md:bottom-28 md:right-6">
+              {[
+                {
+                  label: "Новая запись",
+                  tone: "text-brand-primary",
+                  border: "border-brand-primary/50",
+                  bg: "bg-[rgba(255,230,0,0.12)]",
+                  icon: <HudRecordGlyph className="h-4 w-4" />,
+                  onClick: () => {
+                    setShowCreateMenu(false);
+                    router.push("/songs/record");
+                  }
+                },
+                {
+                  label: "Новый сингл",
+                  tone: "text-brand-cyan",
+                  border: "border-brand-cyan/40",
+                  bg: "bg-[rgba(85,247,255,0.08)]",
+                  icon: <HudProjectGlyph className="h-4 w-4" />,
+                  onClick: () => openCreateProject("SINGLE")
+                },
+                {
+                  label: "Новый альбом",
+                  tone: "text-brand-cyan",
+                  border: "border-brand-cyan/40",
+                  bg: "bg-[rgba(85,247,255,0.08)]",
+                  icon: <HudProjectGlyph className="h-4 w-4" />,
+                  onClick: () => openCreateProject("ALBUM")
+                },
+                {
+                  label: "Новая папка",
+                  tone: "text-brand-cyan",
+                  border: "border-brand-cyan/40",
+                  bg: "bg-[rgba(85,247,255,0.08)]",
+                  icon: <HudFolderGlyph className="h-4 w-4" />,
+                  onClick: () => {
+                    setShowCreateMenu(false);
+                    setShowCreateFolder(true);
+                  }
+                }
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={action.onClick}
+                  className={cn(
+                    "inline-flex min-h-[3rem] items-center gap-3 rounded-full border px-4 py-3 text-sm uppercase tracking-[0.14em] shadow-neon backdrop-blur-md transition hover:-translate-y-0.5",
+                    action.border,
+                    action.bg,
+                    action.tone
+                  )}
+                >
+                  {action.icon}
+                  <span>{action.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setShowCreateMenu((prev) => !prev)}
+            className="fixed bottom-5 right-4 z-[60] grid h-16 w-16 place-items-center rounded-full border border-brand-primary/80 bg-[linear-gradient(180deg,#fff56b,#ffdf00)] text-[#10070d] shadow-[0_18px_48px_rgba(255,230,0,0.24)] transition hover:scale-[1.03] hover:brightness-105 md:bottom-6 md:right-6"
+            aria-label="Create new"
+          >
+            <HudPlusGlyph className={cn("h-7 w-7 transition-transform", showCreateMenu ? "rotate-45" : "")} />
+          </button>
+        </>
+      ) : null}
+
+      {!floatingCreateButton ? (
+        <HudOverlayMenu
+          open={showCreateMenu}
+          title="Create New Node"
+          subtitle="Выбери точку входа: прямой вход в рекордер или создание новой сущности каталога."
+          onClose={() => setShowCreateMenu(false)}
+        >
+          <div className="grid gap-3 md:grid-cols-2">
+            <button
+              type="button"
+              className="hud-panel rounded-[22px] px-4 py-4 text-left transition hover:border-brand-primary/60"
+              onClick={() => {
+                setShowCreateMenu(false);
+                router.push("/songs/record");
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <HudRecordGlyph className="text-brand-primary" />
+                <div>
+                  <p className="text-sm uppercase tracking-[0.18em] text-brand-primary">Recorder</p>
+                  <p className="mt-1 text-xs leading-5 text-brand-muted">Сразу открыть запись новой сессии.</p>
+                </div>
+              </div>
+            </button>
+            <button
+              type="button"
+              className="hud-panel rounded-[22px] px-4 py-4 text-left transition hover:border-brand-cyan/60"
+              onClick={() => openCreateProject("SINGLE")}
+            >
+              <div className="flex items-center gap-3">
+                <HudProjectGlyph className="text-brand-cyan" />
+                <div>
+                  <p className="text-sm uppercase tracking-[0.18em] text-brand-cyan">Create Single</p>
+                  <p className="mt-1 text-xs leading-5 text-brand-muted">Новый single, который откроется в track HUD.</p>
+                </div>
+              </div>
+            </button>
+            <button
+              type="button"
+              className="hud-panel rounded-[22px] px-4 py-4 text-left transition hover:border-brand-cyan/60"
+              onClick={() => openCreateProject("ALBUM")}
+            >
+              <div className="flex items-center gap-3">
+                <HudProjectGlyph className="text-brand-cyan" />
+                <div>
+                  <p className="text-sm uppercase tracking-[0.18em] text-brand-cyan">Create Album</p>
+                  <p className="mt-1 text-xs leading-5 text-brand-muted">Новый album control room с будущим треклистом.</p>
+                </div>
+              </div>
+            </button>
+            <button
+              type="button"
+              className="hud-panel rounded-[22px] px-4 py-4 text-left transition hover:border-brand-cyan/60"
+              onClick={() => {
+                setShowCreateMenu(false);
+                setShowCreateFolder(true);
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <HudFolderGlyph className="text-brand-cyan" />
+                <div>
+                  <p className="text-sm uppercase tracking-[0.18em] text-brand-cyan">Create Folder</p>
+                  <p className="mt-1 text-xs leading-5 text-brand-muted">Создать новую папку на текущем уровне.</p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </HudOverlayMenu>
+      ) : null}
 
       <MoveNodeModal
         open={Boolean(moveNode)}
@@ -937,6 +1060,62 @@ export function WorkspaceBrowser({
           void deleteFolder(node, "delete_all");
         }}
       />
+
+      <Modal
+        open={showCreateFolder}
+        onClose={() => setShowCreateFolder(false)}
+        title="Create Folder"
+        description="Новый узел каталога на текущем уровне workspace."
+        widthClassName="max-w-lg"
+      >
+        <div className="space-y-4">
+          <Input
+            value={newFolderTitle}
+            onChange={(event) => setNewFolderTitle(event.target.value)}
+            placeholder="Folder title"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setShowCreateFolder(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void createFolder()} disabled={creatingFolder || !newFolderTitle.trim()}>
+              {creatingFolder ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={showCreateProject}
+        onClose={() => setShowCreateProject(false)}
+        title={newProjectReleaseKind === "SINGLE" ? "Create Single" : "Create Album"}
+        description={
+          newProjectReleaseKind === "SINGLE"
+            ? "Single project opens directly in track HUD as soon as the first track appears."
+            : "Album project opens in a dedicated control room with tracklist management."
+        }
+        widthClassName="max-w-lg"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <HudChip tone={newProjectReleaseKind === "SINGLE" ? "yellow" : "muted"}>Single</HudChip>
+            <HudChip tone={newProjectReleaseKind === "ALBUM" ? "cyan" : "muted"}>Album</HudChip>
+          </div>
+          <Input
+            value={newProjectTitle}
+            onChange={(event) => setNewProjectTitle(event.target.value)}
+            placeholder={newProjectReleaseKind === "SINGLE" ? "Single title" : "Album title"}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setShowCreateProject(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void createProject()} disabled={creatingProject || !newProjectTitle.trim()}>
+              {creatingProject ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {deleteEmptyFolderPrompt && (
         <div
@@ -1036,6 +1215,6 @@ export function WorkspaceBrowser({
           </div>
         </div>
       )}
-    </Card>
+    </>
   );
 }

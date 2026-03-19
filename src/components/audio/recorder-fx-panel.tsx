@@ -43,10 +43,10 @@ function KnobControl({ label, value, min, max, step = 1, onChange, formatValue }
   };
 
   return (
-    <div className="rounded-xl border border-brand-border bg-white p-2">
-      <div className="mb-2 flex items-center justify-between gap-2 text-xs text-brand-muted">
+    <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-2">
+      <div className="mb-2 flex items-center justify-between gap-2 text-xs text-brand-cyan/68">
         <span>{label}</span>
-        <span className="font-medium text-brand-ink">{displayValue}</span>
+        <span className="font-medium text-brand-cyan">{displayValue}</span>
       </div>
       <div className="flex justify-center">
         <button
@@ -94,11 +94,11 @@ function KnobControl({ label, value, min, max, step = 1, onChange, formatValue }
             if (event.key === "Home") { event.preventDefault(); onChange(snapKnobValue(min, min, max, step)); return; }
             if (event.key === "End") { event.preventDefault(); onChange(snapKnobValue(max, min, max, step)); }
           }}
-          className="group relative h-16 w-16 rounded-full border border-[#c8d8c1] bg-[#edf4e8] outline-none ring-offset-2 transition hover:border-[#7ca27f] focus-visible:ring-2 focus-visible:ring-[#7ca27f]"
+          className="group relative h-16 w-16 rounded-full border border-white/12 bg-[rgba(255,255,255,0.04)] outline-none ring-offset-2 transition hover:border-[rgba(241,222,98,0.48)] focus-visible:ring-2 focus-visible:ring-[rgba(241,222,98,0.4)]"
         >
-          <div className="absolute inset-[4px] rounded-full border border-[#cfdcc9] bg-[#f8fbf4]" />
+          <div className="absolute inset-[4px] rounded-full border border-white/10 bg-[#0c0c0b]" />
           <div className="absolute inset-0" style={{ transform: `rotate(${angle}deg)` }}>
-            <span className="absolute left-1/2 top-[7px] block h-4 w-1 -translate-x-1/2 rounded-full bg-[#315f3b]" />
+            <span className="absolute left-1/2 top-[7px] block h-4 w-1 -translate-x-1/2 rounded-full bg-[#f1de62]" />
           </div>
           <span className="sr-only">{displayValue}</span>
         </button>
@@ -127,10 +127,16 @@ export function RecorderFxPanel({
   updateSelectedLayerFx, applyFxPreset,
   fxPreviewUrl, fxPreviewStatus, fxPreviewError, onRenderFxPreview,
 }: RecorderFxPanelProps) {
+  const surfaceClass = "rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-3";
+  const sectionClass = "rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-3";
+  const expandButtonClass = "rounded-[4px] border border-white/12 bg-[rgba(255,255,255,0.03)] px-2 py-1 text-xs font-semibold text-brand-cyan/68";
+  const enabledClass = "border-[rgba(241,222,98,0.48)] bg-[rgba(241,222,98,0.12)] text-brand-primary";
+  const disabledClass = "border-white/12 bg-[rgba(255,255,255,0.03)] text-brand-cyan/68";
+
   if (!selectedRecordedLayer || !selectedRecordedLayerFx) {
     return (
-      <div className="space-y-4 rounded-2xl border border-brand-border bg-white p-4">
-        <p className="rounded-xl border border-dashed border-brand-border bg-[#f7faf2] p-4 text-sm text-brand-muted">
+      <div className="space-y-4 rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.02)] p-4">
+        <p className="rounded-[6px] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] p-4 text-sm text-brand-cyan/68">
           Выберите записанную дорожку в `Tracks`, чтобы открыть FX.
         </p>
       </div>
@@ -138,19 +144,19 @@ export function RecorderFxPanel({
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-brand-border bg-white p-4">
+    <div className="space-y-4 rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.02)] p-4">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.16em] text-brand-muted">FX for selected track</p>
-          <h4 className="text-lg font-semibold text-brand-ink">{selectedRecordedLayer.name}</h4>
-          <p className="text-sm text-brand-muted">
+          <p className="text-xs uppercase tracking-[0.16em] text-brand-cyan/68">FX for selected track</p>
+          <h4 className="text-lg font-semibold text-brand-cyan">{selectedRecordedLayer.name}</h4>
+          <p className="text-sm text-brand-cyan/68">
             {formatRoleLabel(selectedRecordedLayer.role) ?? "Track"} • {formatDuration(selectedRecordedLayer.durationSec)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {(["clean", "warm", "doubleWide", "phone"] as const).map((preset) => (
-            <Button key={preset} type="button" variant="secondary" className="border-brand-border bg-white" onClick={() => applyFxPreset(preset)}>
+            <Button key={preset} type="button" variant="secondary" onClick={() => applyFxPreset(preset)}>
               {preset === "clean" ? "Clean" : preset === "warm" ? "Warm Vox" : preset === "doubleWide" ? "Double Wide" : "Phone"}
             </Button>
           ))}
@@ -165,7 +171,6 @@ export function RecorderFxPanel({
         <Button
           type="button"
           variant="secondary"
-          className="border-brand-border bg-white"
           onClick={() => updateSelectedLayerFx((fx) => ({
             ...fx,
             eq: { ...fx.eq, enabled: false },
@@ -180,27 +185,27 @@ export function RecorderFxPanel({
         </Button>
       </div>
 
-      {fxPreviewError && <p className="text-xs text-[#a4372a]">{fxPreviewError}</p>}
+      {fxPreviewError && <p className="text-xs text-brand-primary">{fxPreviewError}</p>}
 
-      <div className="rounded-xl border border-brand-border bg-[#f7faf2] p-3">
-        <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-muted">Selected Track Preview</p>
+      <div className={sectionClass}>
+        <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-cyan/68">Selected Track Preview</p>
         <AudioWaveformPlayer src={fxPreviewUrl || selectedRecordedLayer.url} />
       </div>
 
       {/* EQ + Reverb + Delay */}
       <div className="grid gap-3 lg:grid-cols-2">
         {/* EQ */}
-        <div className="rounded-xl border border-brand-border bg-[#fbfdf8] p-3">
+        <div className={sectionClass}>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-brand-ink">EQ (3 bands)</p>
+              <p className="text-sm font-semibold text-brand-cyan">EQ (3 bands)</p>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => toggleFxPanel("eq")} className="rounded-lg border border-brand-border bg-white px-2 py-1 text-xs font-semibold text-brand-muted">
+              <button type="button" onClick={() => toggleFxPanel("eq")} className={expandButtonClass}>
                 {fxPanelsOpen.eq ? "Collapse" : "Expand"}
               </button>
               <button
                 type="button"
                 onClick={() => updateSelectedLayerFx((fx) => ({ ...fx, eq: { ...fx.eq, enabled: !fx.eq.enabled } }))}
-                className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.eq.enabled ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"}`}
+                className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.eq.enabled ? enabledClass : disabledClass}`}
               >
                 {selectedRecordedLayerFx.eq.enabled ? "On" : "Off"}
               </button>
@@ -235,17 +240,17 @@ export function RecorderFxPanel({
 
         <div className="space-y-3">
           {/* Reverb */}
-          <div className="rounded-xl border border-brand-border bg-[#fbfdf8] p-3">
+          <div className={sectionClass}>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-brand-ink">Reverb</p>
+              <p className="text-sm font-semibold text-brand-cyan">Reverb</p>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => toggleFxPanel("reverb")} className="rounded-lg border border-brand-border bg-white px-2 py-1 text-xs font-semibold text-brand-muted">
+                <button type="button" onClick={() => toggleFxPanel("reverb")} className={expandButtonClass}>
                   {fxPanelsOpen.reverb ? "Collapse" : "Expand"}
                 </button>
                 <button
                   type="button"
                   onClick={() => updateSelectedLayerFx((fx) => ({ ...fx, reverb: { ...fx.reverb, enabled: !fx.reverb.enabled } }))}
-                  className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.reverb.enabled ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"}`}
+                  className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.reverb.enabled ? enabledClass : disabledClass}`}
                 >
                   {selectedRecordedLayerFx.reverb.enabled ? "On" : "Off"}
                 </button>
@@ -270,17 +275,17 @@ export function RecorderFxPanel({
           </div>
 
           {/* Delay */}
-          <div className="rounded-xl border border-brand-border bg-[#fbfdf8] p-3">
+          <div className={sectionClass}>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-brand-ink">Delay</p>
+              <p className="text-sm font-semibold text-brand-cyan">Delay</p>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => toggleFxPanel("delay")} className="rounded-lg border border-brand-border bg-white px-2 py-1 text-xs font-semibold text-brand-muted">
+                <button type="button" onClick={() => toggleFxPanel("delay")} className={expandButtonClass}>
                   {fxPanelsOpen.delay ? "Collapse" : "Expand"}
                 </button>
                 <button
                   type="button"
                   onClick={() => updateSelectedLayerFx((fx) => ({ ...fx, delay: { ...fx.delay, enabled: !fx.delay.enabled } }))}
-                  className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.delay.enabled ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"}`}
+                  className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.delay.enabled ? enabledClass : disabledClass}`}
                 >
                   {selectedRecordedLayerFx.delay.enabled ? "On" : "Off"}
                 </button>
@@ -309,17 +314,17 @@ export function RecorderFxPanel({
       {/* Filter + Drive/Tune */}
       <div className="grid gap-3 lg:grid-cols-2">
         {/* Filter */}
-        <div className="rounded-xl border border-brand-border bg-[#fbfdf8] p-3">
+        <div className={sectionClass}>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-brand-ink">Filter</p>
+              <p className="text-sm font-semibold text-brand-cyan">Filter</p>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => toggleFxPanel("filter")} className="rounded-lg border border-brand-border bg-white px-2 py-1 text-xs font-semibold text-brand-muted">
+              <button type="button" onClick={() => toggleFxPanel("filter")} className={expandButtonClass}>
                 {fxPanelsOpen.filter ? "Collapse" : "Expand"}
               </button>
               <button
                 type="button"
                 onClick={() => updateSelectedLayerFx((fx) => ({ ...fx, filter: { ...fx.filter, enabled: !fx.filter.enabled } }))}
-                className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.filter.enabled ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"}`}
+                className={`rounded-lg border px-2 py-1 text-xs font-semibold ${selectedRecordedLayerFx.filter.enabled ? enabledClass : disabledClass}`}
               >
                 {selectedRecordedLayerFx.filter.enabled ? "On" : "Off"}
               </button>
@@ -333,7 +338,7 @@ export function RecorderFxPanel({
                     key={mode}
                     type="button"
                     onClick={() => updateSelectedLayerFx((fx) => ({ ...fx, filter: { ...fx.filter, mode } }))}
-                    className={`rounded-lg border px-2 py-1 text-xs ${selectedRecordedLayerFx.filter.mode === mode ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"}`}
+                    className={`rounded-lg border px-2 py-1 text-xs ${selectedRecordedLayerFx.filter.mode === mode ? enabledClass : disabledClass}`}
                   >
                     {mode}
                   </button>
@@ -358,19 +363,14 @@ export function RecorderFxPanel({
         </div>
 
         {/* Drive / Tune */}
-        <div className="rounded-xl border border-brand-border bg-[#fbfdf8] p-3">
+        <div className={sectionClass}>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-brand-ink">Drive / Tune</p>
+              <p className="text-sm font-semibold text-brand-cyan">Drive / Tune</p>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => toggleFxPanel("driveTune")} className="rounded-lg border border-brand-border bg-white px-2 py-1 text-xs font-semibold text-brand-muted">
+              <button type="button" onClick={() => toggleFxPanel("driveTune")} className={expandButtonClass}>
                 {fxPanelsOpen.driveTune ? "Collapse" : "Expand"}
               </button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="border-brand-border bg-white"
-                onClick={() => updateSelectedLayerFx(() => createDefaultFxChainSettings())}
-              >
+              <Button type="button" variant="secondary" onClick={() => updateSelectedLayerFx(() => createDefaultFxChainSettings())}>
                 Reset FX
               </Button>
             </div>
@@ -378,13 +378,13 @@ export function RecorderFxPanel({
           {fxPanelsOpen.driveTune && (
             <>
               {/* Distortion */}
-              <div className="mb-3 rounded-xl border border-brand-border bg-white p-2">
-                <div className="mb-2 flex items-center justify-between text-xs text-brand-muted">
+              <div className="mb-3 rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-2">
+                <div className="mb-2 flex items-center justify-between text-xs text-brand-cyan/68">
                   <span>Distortion</span>
                   <button
                     type="button"
                     onClick={() => updateSelectedLayerFx((fx) => ({ ...fx, distortion: { ...fx.distortion, enabled: !fx.distortion.enabled } }))}
-                    className={`rounded border px-2 py-0.5 text-[11px] ${selectedRecordedLayerFx.distortion.enabled ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"}`}
+                    className={`rounded border px-2 py-0.5 text-[11px] ${selectedRecordedLayerFx.distortion.enabled ? enabledClass : disabledClass}`}
                   >
                     {selectedRecordedLayerFx.distortion.enabled ? "On" : "Off"}
                   </button>
@@ -406,13 +406,13 @@ export function RecorderFxPanel({
               </div>
 
               {/* Autotune */}
-              <div className="rounded-xl border border-brand-border bg-white p-2">
-                <div className="mb-2 flex items-center justify-between text-xs text-brand-muted">
+              <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-2">
+                <div className="mb-2 flex items-center justify-between text-xs text-brand-cyan/68">
                   <span>Autotune (experimental)</span>
                   <button
                     type="button"
                     onClick={() => updateSelectedLayerFx((fx) => ({ ...fx, autotune: { ...fx.autotune, enabled: !fx.autotune.enabled } }))}
-                    className={`rounded border px-2 py-0.5 text-[11px] ${selectedRecordedLayerFx.autotune.enabled ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"}`}
+                    className={`rounded border px-2 py-0.5 text-[11px] ${selectedRecordedLayerFx.autotune.enabled ? enabledClass : disabledClass}`}
                   >
                     {selectedRecordedLayerFx.autotune.enabled ? "On" : "Off"}
                   </button>

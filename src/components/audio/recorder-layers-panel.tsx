@@ -39,12 +39,11 @@ export function RecorderLayersPanel({
   const beatFileInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
-    <div className="space-y-4 rounded-2xl border border-brand-border bg-white p-4">
+    <div className="space-y-4 rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.02)] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           variant="secondary"
-          className="border-brand-border bg-white"
           onClick={() => beatFileInputRef.current?.click()}
         >
           Загрузить бит
@@ -56,7 +55,7 @@ export function RecorderLayersPanel({
         >
           {stemsPreviewStatus === "processing" ? "Собираем preview..." : "Preview Mix (быстро)"}
         </Button>
-        <p className="text-sm text-brand-muted">Preview всех активных дорожек с учётом volume/pan и FX для записанных дорожек.</p>
+        <p className="text-sm text-brand-cyan/68">Preview всех активных дорожек с учётом volume/pan и FX для записанных дорожек.</p>
       </div>
       <input
         ref={beatFileInputRef}
@@ -71,17 +70,17 @@ export function RecorderLayersPanel({
         }}
       />
 
-      {stemsPreviewError && <p className="text-xs text-[#a4372a]">{stemsPreviewError}</p>}
+      {stemsPreviewError && <p className="text-xs text-brand-primary">{stemsPreviewError}</p>}
 
       {stemsPreviewUrl && (
-        <div className="rounded-xl border border-brand-border bg-[#f7faf2] p-3">
-          <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-muted">Mix Preview</p>
+        <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-3">
+          <p className="mb-2 text-xs uppercase tracking-[0.16em] text-brand-cyan/68">Mix Preview</p>
           <AudioWaveformPlayer src={stemsPreviewUrl} className="[&_p]:text-brand-muted" />
         </div>
       )}
 
       {layers.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-brand-border bg-[#f7faf2] p-4 text-sm text-brand-muted">
+        <p className="rounded-[6px] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] p-4 text-sm text-brand-cyan/68">
           Пока нет дорожек. Запишите первую дорожку или импортируйте бит.
         </p>
       ) : (
@@ -91,25 +90,25 @@ export function RecorderLayersPanel({
             return (
               <div
                 key={layer.id}
-                className={`rounded-2xl border p-3 ${selected ? "border-[#7ca27f] bg-[#f4faef]" : "border-brand-border bg-[#fbfdf8]"}`}
+                className={`rounded-[6px] border p-3 ${selected ? "border-[rgba(241,222,98,0.48)] bg-[rgba(241,222,98,0.08)]" : "border-white/12 bg-[rgba(255,255,255,0.03)]"}`}
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedLayerId(layer.id)}
-                    className={`rounded-lg border px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
-                      selected ? "border-[#7ca27f] bg-[#eef7ea] text-[#315f3b]" : "border-brand-border bg-white text-brand-muted"
+                    className={`rounded-[4px] border px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
+                      selected ? "border-[rgba(241,222,98,0.48)] bg-[rgba(241,222,98,0.12)] text-brand-primary" : "border-white/12 bg-[rgba(255,255,255,0.03)] text-brand-cyan/68"
                     }`}
                   >
                     {selected ? "Выбрана" : "Выбрать"}
                   </button>
                   {formatRoleLabel(layer.role) && (
-                    <span className="rounded-lg border border-brand-border bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-muted">
+                    <span className="rounded-[4px] border border-white/12 bg-[rgba(255,255,255,0.03)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-cyan/68">
                       {formatRoleLabel(layer.role)}
                     </span>
                   )}
-                  <span className="text-xs text-brand-muted">{layer.kind === "import" ? "Импорт" : "Запись"}</span>
-                  <span className="ml-auto text-xs text-brand-muted">{formatDuration(layer.durationSec)}</span>
+                  <span className="text-xs text-brand-cyan/68">{layer.kind === "import" ? "Импорт" : "Запись"}</span>
+                  <span className="ml-auto text-xs text-brand-cyan/68">{formatDuration(layer.durationSec)}</span>
                 </div>
 
                 <div className="mb-2 flex items-center gap-2">
@@ -121,7 +120,7 @@ export function RecorderLayersPanel({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-10 w-10 border-brand-border bg-white p-0"
+                    className="h-10 w-10 p-0"
                     onClick={() => updateLayer(layer.id, (cur) => ({ ...cur, muted: !cur.muted }))}
                     title={layer.muted ? "Включить" : "Выключить"}
                   >
@@ -130,7 +129,7 @@ export function RecorderLayersPanel({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-10 w-10 border-brand-border bg-white p-0"
+                    className="h-10 w-10 p-0"
                     onClick={() => removeLayer(layer.id)}
                     title="Удалить"
                   >
@@ -141,8 +140,8 @@ export function RecorderLayersPanel({
                 <AudioWaveformPlayer src={layer.url} className="mb-2" />
 
                 <div className="grid gap-2 md:grid-cols-2">
-                  <div className="rounded-xl border border-brand-border bg-white p-2">
-                    <div className="mb-1 flex items-center justify-between text-xs text-brand-muted">
+                  <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-2">
+                    <div className="mb-1 flex items-center justify-between text-xs text-brand-cyan/68">
                       <span>Volume</span>
                       <span>{Math.round(layer.volume * 100)}%</span>
                     </div>
@@ -154,11 +153,11 @@ export function RecorderLayersPanel({
                       onChange={(e) =>
                         updateLayer(layer.id, (cur) => ({ ...cur, volume: clamp(Number(e.target.value) / 100, 0, 1) }))
                       }
-                      className="h-2 w-full cursor-pointer accent-[#2A342C]"
+                      className="h-2 w-full cursor-pointer accent-[#f1de62]"
                     />
                   </div>
-                  <div className="rounded-xl border border-brand-border bg-white p-2">
-                    <div className="mb-1 flex items-center justify-between text-xs text-brand-muted">
+                  <div className="rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-2">
+                    <div className="mb-1 flex items-center justify-between text-xs text-brand-cyan/68">
                       <span>Pan</span>
                       <span>{formatPanLabel(layer.pan)}</span>
                     </div>
@@ -170,7 +169,7 @@ export function RecorderLayersPanel({
                       onChange={(e) =>
                         updateLayer(layer.id, (cur) => ({ ...cur, pan: clampPanValue(Number(e.target.value)) }))
                       }
-                      className="h-2 w-full cursor-pointer accent-[#2A342C]"
+                      className="h-2 w-full cursor-pointer accent-[#f4f0e8]"
                     />
                   </div>
                 </div>

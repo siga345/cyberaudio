@@ -177,7 +177,7 @@ export const GET = withApiHandler(async (request: Request) => {
         }))
       ]
         .sort(compareWorkspaceNodes)
-        .slice(0, 2)
+        .slice(0, 4)
         .map((item) =>
           item.type === "folder"
             ? { id: item.id, type: item.type, title: item.title }

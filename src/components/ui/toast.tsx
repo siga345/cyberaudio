@@ -22,9 +22,9 @@ type ToastContextValue = {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const variantClassName: Record<ToastVariant, string> = {
-  success: "border-brand-cyan/40 bg-[rgba(73,246,255,0.14)] text-brand-ink",
-  error: "border-brand-magenta/45 bg-[rgba(255,79,216,0.14)] text-brand-ink",
-  info: "border-brand-primary/45 bg-[rgba(248,239,0,0.14)] text-brand-ink"
+  success: "border-brand-primary/45 bg-[rgba(240,220,99,0.14)] text-brand-ink",
+  error: "border-white/18 bg-[rgba(255,255,255,0.08)] text-brand-ink",
+  info: "border-white/15 bg-[rgba(255,255,255,0.08)] text-brand-ink"
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {

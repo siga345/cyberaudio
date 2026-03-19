@@ -82,16 +82,16 @@ export default function SongsArchivePage() {
       <section className="cyber-panel rounded-[32px] px-5 py-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-brand-magenta">Release Archive</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-brand-magenta">Samizdat Rotation</p>
             <h1 className="mt-2 font-[var(--font-display)] text-3xl uppercase tracking-[0.14em] text-brand-ink">
-              Архив релизов
+              Архив эфира
             </h1>
             <p className="mt-2 text-sm text-brand-muted">
-              Все треки, у которых зафиксирована версия типа RELEASE.
+              Здесь хранятся версии, которые уже звучат как готовый ночной релиз.
             </p>
           </div>
           <Link href="/songs">
-            <Button variant="secondary">Вернуться в workspace</Button>
+            <Button variant="secondary">Вернуться в пульт</Button>
           </Link>
         </div>
       </section>
@@ -104,7 +104,7 @@ export default function SongsArchivePage() {
             {archiveTracks.map((track) => (
               <div key={track.id} className="rounded-[24px] border border-brand-border bg-[rgba(10,18,34,0.84)] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <Badge>{track.releaseArchiveMeta?.releaseDate ?? "Release"}</Badge>
+                  <Badge>{track.releaseArchiveMeta?.releaseDate ?? "On Air"}</Badge>
                   <Button variant="secondary" onClick={() => playTrack(track)}>
                     Play
                   </Button>
@@ -120,7 +120,7 @@ export default function SongsArchivePage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-brand-muted">Архив релизов пока пуст.</p>
+          <p className="text-sm text-brand-muted">Архив эфира пока пуст.</p>
         )}
       </Card>
     </div>

@@ -22,13 +22,16 @@ const config: Config = {
         }
       },
       boxShadow: {
-        neon: "0 0 0 1px rgba(73,246,255,0.12), 0 0 28px rgba(73,246,255,0.16), 0 0 48px rgba(255,79,216,0.08)"
+        neon:
+          "0 28px 80px rgba(0,0,0,0.58), 0 0 0 1px rgba(255,68,88,0.2), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 32px rgba(85,247,255,0.08)",
+        hud:
+          "0 24px 72px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px rgba(255,62,89,0.16)"
       },
       backgroundImage: {
         "cyber-grid":
-          "linear-gradient(rgba(73,246,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(73,246,255,0.07) 1px, transparent 1px)",
+          "linear-gradient(rgba(255,70,93,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,70,93,0.08) 1px, transparent 1px)",
         "cyber-vignette":
-          "radial-gradient(circle at top, rgba(248,239,0,0.16), transparent 32%), radial-gradient(circle at 85% 18%, rgba(255,79,216,0.14), transparent 28%), radial-gradient(circle at 15% 100%, rgba(73,246,255,0.18), transparent 28%)"
+          "radial-gradient(circle at top, rgba(255,230,0,0.12), transparent 30%), radial-gradient(circle at 82% 22%, rgba(85,247,255,0.16), transparent 24%), radial-gradient(circle at 18% 100%, rgba(255,62,89,0.1), transparent 26%)"
       }
     }
   },

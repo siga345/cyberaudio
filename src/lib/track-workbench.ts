@@ -183,19 +183,26 @@ export function serializeTrackDetail(track: TrackDetailRecord) {
 export function serializeProjectDetail(project: ProjectDetailRecord) {
   return {
     ...serializeProject(project),
+    updatedAt: project.updatedAt.toISOString(),
     folder: project.folder ? { id: project.folder.id, title: project.folder.title } : null,
     _count: project._count,
     singleTrackId: project.releaseKind === "SINGLE" && project.tracks.length === 1 ? project.tracks[0]?.id ?? null : null,
     tracks: project.tracks.map((track) => {
       const stage = getSongStageById(track.pathStageId);
+      const serializedDemos = track.demos.map(serializeDemo);
+      const primaryDemo = serializedDemos.find((demo) => demo.id === track.primaryDemoId) ?? null;
+      const playableDemo = primaryDemo?.audioUrl ? primaryDemo : serializedDemos.find((demo) => demo.audioUrl) ?? null;
       return {
         id: track.id,
         title: track.title,
         sortIndex: track.sortIndex,
+        updatedAt: track.updatedAt.toISOString(),
         pathStageId: track.pathStageId,
         pathStage: stage ? { id: stage.id, name: stage.name } : null,
-        demos: track.demos.map(serializeDemo),
-        primaryDemo: track.demos.map(serializeDemo).find((demo) => demo.id === track.primaryDemoId) ?? null,
+        demos: serializedDemos,
+        primaryDemo,
+        playableDemoId: playableDemo?.id ?? null,
+        latestDemoUpdatedAt: serializedDemos[0]?.updatedAt ?? null,
         _count: track._count
       };
     })

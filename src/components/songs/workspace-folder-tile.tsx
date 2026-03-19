@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
-import { Folder } from "lucide-react";
 
+import { HudMenuGlyph } from "@/components/songs/hud-glyphs";
 import type { WorkspaceFolderNode, WorkspacePreviewItem } from "@/components/songs/workspace-types";
 import { buildProjectCoverStyle } from "@/lib/project-cover-style";
 
@@ -20,7 +20,7 @@ function previewTileStyle(item: WorkspacePreviewItem): CSSProperties {
   }
 
   return {
-    background: "linear-gradient(145deg, #f8ef00, #49f6ff)"
+    background: "linear-gradient(145deg, rgba(27,13,21,1), rgba(11,36,43,1))"
   };
 }
 
@@ -41,7 +41,10 @@ export function WorkspaceFolderTile({
   tileProps,
   dragState = "idle"
 }: WorkspaceFolderTileProps) {
-  const preview = node.preview.slice(0, 2);
+  const preview = node.preview.slice(0, 4);
+  const previewCells = preview.length
+    ? [...preview, ...Array.from({ length: Math.max(0, 4 - preview.length) }, (_, index) => ({ id: `empty-${index}`, type: "folder" as const, title: "" }))]
+    : [];
   const dragClasses =
     dragState === "dragging"
       ? "opacity-60 ring-2 ring-brand-ink/30"
@@ -54,59 +57,50 @@ export function WorkspaceFolderTile({
   return (
     <div
       {...tileProps}
-      className={`rounded-2xl bg-transparent p-0 shadow-none transition hover:-translate-y-0.5 md:rounded-3xl ${dragClasses} ${tileProps?.className ?? ""}`}
+      className={`rounded-2xl bg-transparent p-0 shadow-none transition hover:-translate-y-1 md:rounded-3xl ${dragClasses} ${tileProps?.className ?? ""}`}
     >
       <Link href={`/songs/folders/${node.id}`} className="group block">
-        <div className="relative aspect-square overflow-visible rounded-xl md:rounded-2xl">
-          <div className="relative h-full w-full overflow-hidden rounded-xl border border-brand-border/60 bg-[rgba(7,11,20,0.96)] shadow-[0_12px_32px_rgba(2,5,12,0.4)] transition-shadow group-hover:shadow-neon md:rounded-2xl">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(73,246,255,0.22),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(255,79,216,0.14),transparent_50%)]" />
-            <div className="absolute left-2 top-2 h-3.5 w-12 rounded-t-lg border border-white/15 border-b-0 bg-white/10 md:left-3 md:top-3 md:h-4 md:w-14 md:rounded-t-xl" />
-            <div className="absolute bottom-2 left-2 right-2 top-5 overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-[1px] md:bottom-3 md:left-3 md:right-3 md:top-6 md:rounded-2xl">
-              <div className="grid h-full w-full grid-cols-2 gap-1 p-2 md:gap-2 md:p-3">
-                {preview.length ? (
-                  preview.map((item) => (
-                    <div
-                      key={`${item.type}:${item.id}`}
-                      className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
-                      style={previewTileStyle(item)}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-2 rounded-2xl border border-white/10 bg-white/5" />
-                )}
-              </div>
+        <div className="relative">
+          <div className="relative aspect-square overflow-hidden rounded-[24px] border border-brand-border/70 bg-[rgba(11,6,10,0.96)] shadow-[0_20px_55px_rgba(0,0,0,0.45)] transition-shadow group-hover:shadow-[0_26px_70px_rgba(0,0,0,0.65)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(85,247,255,0.12),transparent_45%),radial-gradient(circle_at_100%_100%,rgba(255,62,89,0.14),transparent_50%)]" />
+            <div className="grid h-full w-full grid-cols-2 gap-3 p-3">
+              {preview.length ? (
+                previewCells.map((item) => (
+                  <div
+                    key={`${item.type}:${item.id}`}
+                    className="relative overflow-hidden rounded-[18px] border border-white/8 bg-[rgba(255,255,255,0.03)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    style={previewTileStyle(item)}
+                  />
+                ))
+              ) : (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="rounded-[18px] border border-white/8 bg-[rgba(255,255,255,0.03)]" />
+                ))
+              )}
             </div>
 
-            <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/25 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white backdrop-blur md:rounded-lg md:px-2 md:py-1 md:text-[10px]">
-              <Folder className="h-2.5 w-2.5 md:h-3 md:w-3" />
-              Папка
-            </div>
-            <div className="absolute bottom-2 left-2 right-2 md:bottom-4 md:left-4 md:right-4">
-              <div className="inline-flex max-w-full flex-col rounded-lg border border-white/15 bg-black/25 px-2 py-1 text-white backdrop-blur md:px-2.5 md:py-1.5">
-                <p className="truncate text-xs font-semibold leading-tight drop-shadow-sm md:text-base">{node.title}</p>
-                <p className="mt-0.5 text-[10px] text-white/85 drop-shadow-sm md:text-xs">
-                  {node.itemCount} эл.
-                </p>
+            <div className="absolute right-3 top-3 z-10">
+              <div className="relative">
+                <button
+                  type="button"
+                  className="grid h-10 w-10 place-items-center rounded-[14px] border border-white/10 bg-[rgba(24,19,24,0.72)] text-white/80 shadow-sm backdrop-blur hover:border-brand-cyan/40 hover:text-brand-primary"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onToggleMenu();
+                  }}
+                  aria-label="Действия папки"
+                >
+                  <HudMenuGlyph className="h-4 w-4" />
+                </button>
+                {menuOpen && menuContent}
               </div>
             </div>
           </div>
 
-          <div className="absolute right-2 top-2 z-10 md:right-3 md:top-3">
-            <div className="relative">
-              <button
-                type="button"
-                className="grid h-10 w-10 place-items-center rounded-lg border border-white/25 bg-white/15 text-xs text-white shadow-sm backdrop-blur hover:bg-white/25 md:h-auto md:w-auto md:px-2 md:py-1"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onToggleMenu();
-                }}
-                aria-label="Действия папки"
-              >
-                •••
-              </button>
-              {menuOpen && menuContent}
-            </div>
+          <div className="px-1 pb-1 pt-3">
+            <p className="truncate font-[var(--font-body)] text-[1.75rem] font-semibold leading-none text-brand-ink">{node.title}</p>
+            <p className="mt-2 text-sm text-brand-muted">{node.itemCount} items</p>
           </div>
         </div>
       </Link>

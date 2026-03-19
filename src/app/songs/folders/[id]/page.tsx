@@ -9,7 +9,7 @@ export default function SongsFolderPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="pb-12">
       <div className="mx-auto w-full max-w-6xl px-4 py-5 md:px-6">
-        <WorkspaceBrowser parentFolderId={id} />
+        <WorkspaceBrowser parentFolderId={id} libraryMode floatingCreateButton />
       </div>
     </div>
   );

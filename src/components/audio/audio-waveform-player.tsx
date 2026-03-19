@@ -133,7 +133,7 @@ export function AudioWaveformPlayer({ src, className = "", barCount = 120, loopR
     const barWidth = width / peaks.length;
 
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#081120";
+    ctx.fillStyle = "#0c0c0b";
     ctx.fillRect(0, 0, width, height);
 
     for (let i = 0; i < peaks.length; i += 1) {
@@ -143,12 +143,12 @@ export function AudioWaveformPlayer({ src, className = "", barCount = 120, loopR
       const y = midY - barHeight / 2;
 
       const ratio = i / peaks.length;
-      ctx.fillStyle = ratio <= progress ? "#49F6FF" : "rgba(73,246,255,0.2)";
+      ctx.fillStyle = ratio <= progress ? "#f1de62" : "rgba(244,240,232,0.32)";
       ctx.fillRect(x, y, Math.max(1, barWidth * 0.72), barHeight);
     }
 
     const markerX = progress * width;
-    ctx.fillStyle = "#F8EF00";
+    ctx.fillStyle = "#f4f0e8";
     ctx.globalAlpha = 0.95;
     ctx.fillRect(markerX, 0, Math.max(2, barWidth * 0.8), height);
     ctx.globalAlpha = 1;
@@ -156,9 +156,9 @@ export function AudioWaveformPlayer({ src, className = "", barCount = 120, loopR
       const left = (normalizedLoopRange.start / 100) * width;
       const right = (normalizedLoopRange.end / 100) * width;
       const loopWidth = Math.max(2, right - left);
-      ctx.fillStyle = "rgba(255,79,216,0.14)";
+      ctx.fillStyle = "rgba(241,222,98,0.12)";
       ctx.fillRect(left, 0, loopWidth, height);
-      ctx.strokeStyle = "rgba(255,79,216,0.34)";
+      ctx.strokeStyle = "rgba(241,222,98,0.34)";
       ctx.lineWidth = Math.max(1, dpr);
       ctx.setLineDash([4 * dpr, 3 * dpr]);
       ctx.beginPath();
@@ -237,18 +237,18 @@ export function AudioWaveformPlayer({ src, className = "", barCount = 120, loopR
         >
           {playing ? "Пауза" : "Слушать"}
         </Button>
-        <div className="relative min-w-0 flex-1 overflow-hidden rounded-[18px] border border-brand-border bg-[rgba(8,17,32,0.92)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-          <canvas ref={canvasRef} onClick={seekTo} className="h-16 w-full cursor-pointer bg-[rgba(8,17,32,0.92)]" />
-          {loading && <div className="pointer-events-none absolute inset-0 animate-pulse bg-[rgba(73,246,255,0.07)]" />}
+        <div className="relative min-w-0 flex-1 overflow-hidden rounded-[6px] border border-white/12 bg-[rgba(255,255,255,0.03)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <canvas ref={canvasRef} onClick={seekTo} className="h-16 w-full cursor-pointer bg-transparent" />
+          {loading && <div className="pointer-events-none absolute inset-0 animate-pulse bg-[rgba(241,222,98,0.08)]" />}
         </div>
       </div>
 
-      <div className="flex min-w-0 items-center justify-between gap-3 text-xs text-brand-muted">
+      <div className="flex min-w-0 items-center justify-between gap-3 text-xs text-brand-cyan/72">
         <span>{formatTime(currentTime)}</span>
         <span>{formatTime(duration)}</span>
       </div>
 
-      {error && <p className="text-xs text-brand-magenta">{error}</p>}
+      {error && <p className="text-xs text-brand-primary">{error}</p>}
 
       <audio
         ref={audioRef}

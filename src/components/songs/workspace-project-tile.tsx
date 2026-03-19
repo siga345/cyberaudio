@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { HTMLAttributes, ReactNode } from "react";
-import { Disc3, Music2 } from "lucide-react";
 
+import { HudMenuGlyph } from "@/components/songs/hud-glyphs";
 import { PlaybackIcon } from "@/components/songs/playback-icon";
 import type { WorkspaceProjectNode } from "@/components/songs/workspace-types";
 import { buildProjectCoverStyle } from "@/lib/project-cover-style";
@@ -22,12 +22,8 @@ type WorkspaceProjectTileProps = {
   dragState?: "idle" | "dragging" | "drop-target" | "drop-invalid";
 };
 
-function formatProjectBadgeDate(value: string) {
-  return new Date(value).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
-}
-
 function getTrackStatusLabel(stageName: string | null | undefined) {
-  if (!stageName) return "не выбран";
+  if (!stageName) return "Без статуса";
   const versionType = resolveVersionTypeByStage({ id: 0, name: stageName });
   const statusByVersionType = {
     IDEA_TEXT: "Идея",
@@ -39,6 +35,12 @@ function getTrackStatusLabel(stageName: string | null | undefined) {
     RELEASE: "Релиз"
   } as const;
   return versionType ? statusByVersionType[versionType] : stageName;
+}
+
+function formatTrackCount(trackCount: number) {
+  if (trackCount === 1) return "1 трек";
+  if (trackCount > 1 && trackCount < 5) return `${trackCount} трека`;
+  return `${trackCount} треков`;
 }
 
 export function WorkspaceProjectTile({
@@ -58,10 +60,10 @@ export function WorkspaceProjectTile({
   });
   const releaseKind = node.projectMeta.releaseKind ?? "ALBUM";
   const releaseLabel = releaseKind === "SINGLE" ? "Сингл" : "Альбом";
-  const singleStageLabel =
+  const secondaryLabel =
     releaseKind === "SINGLE" && node.projectMeta.singleTrackId
-      ? `Статус ${getTrackStatusLabel(node.projectMeta.singleTrackStageName)}`
-      : null;
+      ? getTrackStatusLabel(node.projectMeta.singleTrackStageName)
+      : formatTrackCount(node.projectMeta.trackCount || 0);
   const accent = playbackAccentButtonStyle({
     colorA: node.projectMeta.coverColorA || "#F8EF00",
     colorB: node.projectMeta.coverColorB || "#49F6FF"
@@ -78,70 +80,66 @@ export function WorkspaceProjectTile({
   return (
     <div
       {...tileProps}
-      className={`rounded-2xl bg-transparent p-0 shadow-none transition hover:-translate-y-0.5 md:rounded-3xl ${dragClasses} ${tileProps?.className ?? ""}`}
+      className={`rounded-2xl bg-transparent p-0 shadow-none transition hover:-translate-y-1 md:rounded-3xl ${dragClasses} ${tileProps?.className ?? ""}`}
     >
       <Link href={projectOpenHref} className="group block">
-        <div className="relative aspect-square overflow-visible rounded-xl md:rounded-2xl">
-          <div
-            className="relative h-full w-full overflow-hidden rounded-xl shadow-sm transition-shadow group-hover:shadow-md md:rounded-2xl"
-            style={buildProjectCoverStyle({
-              releaseKind,
-              coverType: node.projectMeta.coverType,
-              coverImageUrl: node.projectMeta.coverImageUrl,
-              coverPresetKey: node.projectMeta.coverPresetKey,
-              coverColorA: node.projectMeta.coverColorA,
-              coverColorB: node.projectMeta.coverColorB
-            })}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-black/12" />
-            <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white backdrop-blur md:left-2.5 md:top-2.5 md:rounded-lg md:px-2 md:py-1 md:text-[10px]">
-              <Disc3 className="h-2.5 w-2.5 md:h-3 md:w-3" />
-              {releaseLabel}
-            </div>
-            <div className="absolute right-14 top-2 max-w-[calc(100%-7.5rem)] truncate rounded-md bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white backdrop-blur md:right-16 md:top-2.5 md:max-w-[calc(100%-9rem)] md:rounded-lg md:px-2 md:py-1 md:text-[10px]">
-              {formatProjectBadgeDate(node.updatedAt)}
+        <div className="relative">
+          <div className="relative aspect-square overflow-hidden rounded-[24px] border border-brand-border/70 bg-[rgba(12,6,10,0.94)] shadow-[0_20px_55px_rgba(0,0,0,0.45)] transition-shadow group-hover:shadow-[0_26px_70px_rgba(0,0,0,0.65)]">
+            <div
+              className="absolute inset-0"
+              style={buildProjectCoverStyle({
+                releaseKind,
+                coverType: node.projectMeta.coverType,
+                coverImageUrl: node.projectMeta.coverImageUrl,
+                coverPresetKey: node.projectMeta.coverPresetKey,
+                coverColorA: node.projectMeta.coverColorA,
+                coverColorB: node.projectMeta.coverColorB
+              })}
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,6,11,0.08),rgba(8,4,10,0.34))]" />
+
+            <div className="absolute right-3 top-3 z-10">
+              <div className="relative">
+                <button
+                  type="button"
+                  className="grid h-10 w-10 place-items-center rounded-[14px] border border-white/10 bg-[rgba(24,19,24,0.72)] text-white/80 shadow-sm backdrop-blur hover:border-brand-cyan/40 hover:text-brand-primary"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onToggleMenu();
+                  }}
+                  aria-label="Действия проекта"
+                >
+                  <HudMenuGlyph className="h-4 w-4" />
+                </button>
+                {menuOpen && menuContent}
+              </div>
             </div>
 
-            <div className="absolute bottom-2 left-2 right-12 text-white md:bottom-4 md:left-4 md:right-20">
-              <p className="truncate text-xs font-semibold drop-shadow-sm md:text-base">{node.title}</p>
-              <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-white/90 drop-shadow-sm md:text-xs">
-                <Music2 className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                {singleStageLabel ?? `${node.projectMeta.trackCount || 0} трек.`}
-              </p>
-            </div>
+            <button
+              type="button"
+              className="absolute bottom-3 right-3 z-[1] grid h-12 w-12 place-items-center rounded-[16px] border border-white/8 bg-[rgba(58,51,58,0.72)] text-white shadow-lg backdrop-blur transition hover:brightness-110"
+              style={accent}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onPlay?.();
+              }}
+              aria-label="Играть проект"
+            >
+              {playLoading ? "…" : <PlaybackIcon type="play" className="h-4 w-4" />}
+            </button>
           </div>
 
-          <div className="absolute right-2 top-2 z-10 md:right-3 md:top-3">
-            <div className="relative">
-              <button
-                type="button"
-                className="grid h-10 w-10 place-items-center rounded-lg border border-white/25 bg-white/15 text-xs text-white shadow-sm backdrop-blur hover:bg-white/25 md:h-auto md:w-auto md:px-2 md:py-1 md:text-[11px]"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onToggleMenu();
-                }}
-                aria-label="Действия проекта"
-              >
-                •••
-              </button>
-              {menuOpen && menuContent}
+          <div className="px-1 pb-1 pt-3">
+            <p className="truncate font-[var(--font-body)] text-[1.75rem] font-semibold leading-none text-brand-ink">
+              {node.title}
+            </p>
+            <div className="mt-2 flex items-center justify-between gap-3 text-sm text-brand-muted">
+              <p className="min-w-0 truncate">{secondaryLabel}</p>
+              <span className="shrink-0 text-[11px] uppercase tracking-[0.16em] text-brand-cyan/80">{releaseLabel}</span>
             </div>
           </div>
-
-          <button
-            type="button"
-            className="absolute bottom-2 right-2 z-[1] grid h-10 w-10 place-items-center rounded-full border text-lg shadow-lg backdrop-blur hover:brightness-95 md:bottom-4 md:right-4 md:h-12 md:w-12"
-            style={accent}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onPlay?.();
-            }}
-            aria-label="Играть проект"
-          >
-            {playLoading ? "…" : <PlaybackIcon type="play" className="h-3.5 w-3.5 md:h-4 md:w-4" />}
-          </button>
         </div>
       </Link>
     </div>

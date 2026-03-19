@@ -249,12 +249,12 @@ export function useMultiTrackRecorder({
   useEffect(() => {
     if (!onSessionSnapshotChange) return;
     onSessionSnapshotChange({
-      bpm, bpmAutoEnabled, songKeyRoot, songKeyMode, songKeyAutoEnabled, selectedLayerId,
+      bpm, bpmAutoEnabled, songKeyRoot, songKeyMode, songKeyAutoEnabled, selectedLayerId, recordingState, recordingSeconds,
       layers: layers.map((l) => ({ id: l.id, kind: l.kind, role: l.role, name: l.name, muted: l.muted, volume: l.volume, pan: l.pan, durationSec: l.durationSec })),
       hasStemsPreview: Boolean(stemsPreviewUrl),
       hasMixPreview: Boolean(mixPreviewUrl),
     });
-  }, [bpm, bpmAutoEnabled, layers, mixPreviewUrl, onSessionSnapshotChange, selectedLayerId, songKeyAutoEnabled, songKeyMode, songKeyRoot, stemsPreviewUrl]);
+  }, [bpm, bpmAutoEnabled, layers, mixPreviewUrl, onSessionSnapshotChange, recordingSeconds, recordingState, selectedLayerId, songKeyAutoEnabled, songKeyMode, songKeyRoot, stemsPreviewUrl]);
 
   useEffect(() => {
     drawRecordWaveIdle();
@@ -284,8 +284,8 @@ export function useMultiTrackRecorder({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#f7faf2"; ctx.fillRect(0, 0, width, height);
-    ctx.strokeStyle = "#cfdcc9"; ctx.lineWidth = 1;
+    ctx.fillStyle = "#0c0910"; ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "#3a2a3f"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); ctx.stroke();
   }
 
@@ -339,13 +339,13 @@ export function useMultiTrackRecorder({
 
         const history = recordWaveHistoryRef.current;
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = "#f7faf2"; ctx.fillRect(0, 0, width, height);
-        ctx.strokeStyle = "#d8e3d2"; ctx.lineWidth = 1;
+        ctx.fillStyle = "#0c0910"; ctx.fillRect(0, 0, width, height);
+        ctx.strokeStyle = "#3a2a3f"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); ctx.stroke();
 
         if (history.length > 0) {
           const centerY = height / 2; const maxAmp = height * 0.4;
-          ctx.strokeStyle = "#315f3b"; ctx.lineWidth = 2; ctx.lineCap = "round";
+          ctx.strokeStyle = "#ff57c9"; ctx.lineWidth = 2; ctx.lineCap = "round";
           for (let i = 0; i < history.length; i += 1) {
             const x = width - (history.length - 1 - i) * 3;
             const amp = (history[i] ?? 0) * maxAmp;

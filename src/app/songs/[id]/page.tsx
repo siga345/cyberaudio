@@ -1,126 +1,51 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { use, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FilePlus2, PencilLine, Radio, Trash2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ChevronLeft, MoreHorizontal, PencilLine, Play } from "lucide-react";
 
-import { MultiTrackRecorder, type ReadyPayload } from "@/components/audio/multi-track-recorder";
-import { AudioWaveformPlayer } from "@/components/audio/audio-waveform-player";
-import { SongAnalysisBadges } from "@/components/songs/song-analysis-badges";
-import { Badge } from "@/components/ui/badge";
+import {
+  buildTrackPlaybackItem,
+  buildVersionSummary,
+  formatTrackTimestamp,
+  useTrackScreen,
+  versionLabel
+} from "@/components/songs/track-screen-context";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
-import { appendAudioAnalysisToFormData, detectAudioAnalysisMvp } from "@/lib/audio/upload-analysis-client";
-import { apiFetch, apiFetchJson, readApiErrorMessage } from "@/lib/client-fetch";
+import { apiFetch, readApiErrorMessage } from "@/lib/client-fetch";
 import { getSongStages } from "@/lib/song-stages";
-import { pickPreferredPlaybackDemo } from "@/lib/songs-playback-helpers";
 import { useSongsPlayback } from "@/components/songs/songs-playback-provider";
-
-type DemoVersionType = "IDEA_TEXT" | "DEMO" | "ARRANGEMENT" | "NO_MIX" | "MIXED" | "MASTERED" | "RELEASE";
-
-type Demo = {
-  id: string;
-  audioUrl: string | null;
-  duration: number;
-  textNote?: string | null;
-  releaseDate?: string | null;
-  versionType: DemoVersionType;
-  createdAt: string;
-  versionReflection?: {
-    whyMade?: string | null;
-    whatChanged?: string | null;
-    whatNotWorking?: string | null;
-  } | null;
-};
-
-type TrackDetail = {
-  id: string;
-  title: string;
-  lyricsText?: string | null;
-  updatedAt: string;
-  project?: {
-    id: string;
-    title: string;
-    releaseKind?: "SINGLE" | "ALBUM";
-    coverType?: "GRADIENT" | "IMAGE";
-    coverImageUrl?: string | null;
-    coverPresetKey?: string | null;
-    coverColorA?: string | null;
-    coverColorB?: string | null;
-  } | null;
-  displayBpm?: number | null;
-  displayKeyRoot?: string | null;
-  displayKeyMode?: string | null;
-  pathStageId?: number | null;
-  pathStage?: { id: number; name: string } | null;
-  primaryDemoId?: string | null;
-  primaryDemo?: Demo | null;
-  demos: Demo[];
-};
+import { buildProjectCoverStyle } from "@/lib/project-cover-style";
 
 const stages = getSongStages();
 
-async function getAudioDurationSeconds(file: Blob) {
-  return new Promise<number>((resolve) => {
-    const audio = document.createElement("audio");
-    const objectUrl = URL.createObjectURL(file);
-    audio.preload = "metadata";
-    audio.src = objectUrl;
-    audio.onloadedmetadata = () => {
-      const duration = Number.isFinite(audio.duration) ? Math.round(audio.duration) : 0;
-      URL.revokeObjectURL(objectUrl);
-      resolve(Math.max(0, duration));
-    };
-    audio.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(0);
-    };
-  });
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-function versionLabel(versionType: DemoVersionType) {
-  return stages.find((stage) => stage.versionType === versionType)?.name ?? versionType;
-}
-
-export default function TrackDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function TrackPage() {
+  const searchParams = useSearchParams();
   const toast = useToast();
   const playback = useSongsPlayback();
-  const recorderErrorRef = useRef("");
-  const [trackTitle, setTrackTitle] = useState("");
-  const [lyricsText, setLyricsText] = useState("");
+  const {
+    track,
+    isLoading,
+    error,
+    refetch,
+    selectedDemoId,
+    setSelectedDemoId,
+    selectedDemo
+  } = useTrackScreen();
+
+  const [editingTrack, setEditingTrack] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftLyrics, setDraftLyrics] = useState("");
   const [savingTrack, setSavingTrack] = useState(false);
 
-  const [showCreateVersion, setShowCreateVersion] = useState(false);
-  const [newVersionType, setNewVersionType] = useState<DemoVersionType>("DEMO");
-  const [newVersionMode, setNewVersionMode] = useState<"upload" | "record" | "text">("upload");
-  const [newVersionFile, setNewVersionFile] = useState<File | null>(null);
-  const [recordedMix, setRecordedMix] = useState<ReadyPayload | null>(null);
-  const [newVersionNote, setNewVersionNote] = useState("");
-  const [newVersionWhyMade, setNewVersionWhyMade] = useState("");
-  const [newVersionWhatChanged, setNewVersionWhatChanged] = useState("");
-  const [newVersionWhatNotWorking, setNewVersionWhatNotWorking] = useState("");
-  const [newVersionReleaseDate, setNewVersionReleaseDate] = useState("");
-  const [creatingVersion, setCreatingVersion] = useState(false);
-
   const [editingDemoId, setEditingDemoId] = useState<string | null>(null);
-  const [editVersionType, setEditVersionType] = useState<DemoVersionType>("DEMO");
+  const [editVersionType, setEditVersionType] = useState<string>("DEMO");
   const [editVersionNote, setEditVersionNote] = useState("");
   const [editVersionWhyMade, setEditVersionWhyMade] = useState("");
   const [editVersionWhatChanged, setEditVersionWhatChanged] = useState("");
@@ -129,34 +54,40 @@ export default function TrackDetailPage({ params }: { params: Promise<{ id: stri
   const [savingVersionMeta, setSavingVersionMeta] = useState(false);
   const [deletingDemoId, setDeletingDemoId] = useState<string | null>(null);
   const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null);
+  const [menuDemoId, setMenuDemoId] = useState<string | null>(null);
 
-  const { data: track, isLoading, refetch } = useQuery({
-    queryKey: ["track-detail", id],
-    queryFn: () => apiFetchJson<TrackDetail>(`/api/songs/${id}`)
-  });
+  const autoOpenedPlayer = useRef(false);
 
   useEffect(() => {
     if (!track) return;
-    setTrackTitle(track.title);
-    setLyricsText(track.lyricsText ?? "");
+    setDraftTitle(track.title);
+    setDraftLyrics(track.lyricsText ?? "");
   }, [track]);
 
-  const preferredDemo = useMemo(() => (track ? pickPreferredPlaybackDemo(track) : null), [track]);
+  useEffect(() => {
+    if (!track || !selectedDemo || searchParams.get("player") !== "1" || autoOpenedPlayer.current) return;
+    if (!selectedDemo.audioUrl) return;
 
-  function resetCreateVersionModal() {
-    setNewVersionType("DEMO");
-    setNewVersionMode("upload");
-    setNewVersionFile(null);
-    setRecordedMix(null);
-    setNewVersionNote("");
-    setNewVersionWhyMade("");
-    setNewVersionWhatChanged("");
-    setNewVersionWhatNotWorking("");
-    setNewVersionReleaseDate("");
-    recorderErrorRef.current = "";
-  }
+    playback.play(buildTrackPlaybackItem(track, selectedDemo));
+    playback.openPlayerWindow();
+    autoOpenedPlayer.current = true;
+  }, [playback, searchParams, selectedDemo, track]);
 
-  async function saveTrackMeta() {
+  const orderedDemos = useMemo(
+    () => [...(track?.demos ?? [])].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()),
+    [track?.demos]
+  );
+
+  const noteBlocks = useMemo(
+    () =>
+      (track?.lyricsText ?? "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
+    [track?.lyricsText]
+  );
+
+  async function saveTrack() {
     if (!track) return;
     setSavingTrack(true);
     try {
@@ -164,99 +95,24 @@ export default function TrackDetailPage({ params }: { params: Promise<{ id: stri
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: trackTitle.trim(),
-          lyricsText: lyricsText.trim() || null
+          title: draftTitle.trim(),
+          lyricsText: draftLyrics.trim() || null
         })
       });
       if (!response.ok) {
         throw new Error(await readApiErrorMessage(response, "Не удалось обновить трек."));
       }
       await refetch();
+      setEditingTrack(false);
       toast.success("Трек обновлён.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось обновить трек.");
+    } catch (nextError) {
+      toast.error(nextError instanceof Error ? nextError.message : "Не удалось обновить трек.");
     } finally {
       setSavingTrack(false);
     }
   }
 
-  async function createVersion() {
-    if (!track) return;
-    setCreatingVersion(true);
-    try {
-      if (newVersionType === "IDEA_TEXT" || newVersionMode === "text") {
-        const response = await apiFetch(`/api/songs/${track.id}/demos`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            versionType: "IDEA_TEXT",
-            noteText: newVersionNote,
-            reflection: {
-              whyMade: newVersionWhyMade,
-              whatChanged: newVersionWhatChanged,
-              whatNotWorking: newVersionWhatNotWorking
-            }
-          })
-        });
-        if (!response.ok) {
-          throw new Error(await readApiErrorMessage(response, "Не удалось создать текстовую версию."));
-        }
-      } else {
-        let fileToUpload: Blob | null = null;
-        let filename = `demo-${Date.now()}.wav`;
-        let durationSec = 0;
-
-        if (newVersionMode === "upload") {
-          if (!newVersionFile) throw new Error("Выбери аудиофайл.");
-          fileToUpload = newVersionFile;
-          filename = newVersionFile.name;
-          durationSec = await getAudioDurationSeconds(newVersionFile);
-        }
-
-        if (newVersionMode === "record") {
-          if (!recordedMix) throw new Error(recorderErrorRef.current || "Сначала собери mix в рекордере.");
-          fileToUpload = recordedMix.blob;
-          filename = recordedMix.filename;
-          durationSec = recordedMix.durationSec;
-        }
-
-        if (!fileToUpload) {
-          throw new Error("Не удалось подготовить аудио.");
-        }
-
-        const analysis = await detectAudioAnalysisMvp(fileToUpload);
-        const formData = new FormData();
-        formData.append("trackId", track.id);
-        formData.append("file", fileToUpload, filename);
-        formData.append("durationSec", String(durationSec));
-        formData.append("versionType", newVersionType);
-        formData.append("noteText", newVersionNote);
-        formData.append("reflectionWhyMade", newVersionWhyMade);
-        formData.append("reflectionWhatChanged", newVersionWhatChanged);
-        formData.append("reflectionWhatNotWorking", newVersionWhatNotWorking);
-        if (newVersionType === "RELEASE" && newVersionReleaseDate.trim()) {
-          formData.append("releaseDate", newVersionReleaseDate.trim());
-        }
-        appendAudioAnalysisToFormData(formData, analysis);
-
-        const response = await apiFetch("/api/audio-clips", { method: "POST", body: formData });
-        if (!response.ok) {
-          throw new Error(await readApiErrorMessage(response, "Не удалось добавить аудио-версию."));
-        }
-      }
-
-      await refetch();
-      setShowCreateVersion(false);
-      resetCreateVersionModal();
-      toast.success("Версия добавлена.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось добавить версию.");
-    } finally {
-      setCreatingVersion(false);
-    }
-  }
-
-  function openEditDemo(demo: Demo) {
+  function openEditDemo(demo: NonNullable<typeof track>["demos"][number]) {
     setEditingDemoId(demo.id);
     setEditVersionType(demo.versionType);
     setEditVersionNote(demo.textNote ?? "");
@@ -276,7 +132,7 @@ export default function TrackDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({
           versionType: editVersionType,
           noteText: editVersionNote,
-          releaseDate: editVersionType === "RELEASE" ? editVersionReleaseDate : null,
+          releaseDate: editVersionReleaseDate || null,
           reflection: {
             whyMade: editVersionWhyMade,
             whatChanged: editVersionWhatChanged,
@@ -285,36 +141,15 @@ export default function TrackDetailPage({ params }: { params: Promise<{ id: stri
         })
       });
       if (!response.ok) {
-        throw new Error(await readApiErrorMessage(response, "Не удалось обновить версию."));
+        throw new Error(await readApiErrorMessage(response, "Не удалось сохранить версию."));
       }
       await refetch();
       setEditingDemoId(null);
       toast.success("Версия обновлена.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось обновить версию.");
+    } catch (nextError) {
+      toast.error(nextError instanceof Error ? nextError.message : "Не удалось сохранить версию.");
     } finally {
       setSavingVersionMeta(false);
-    }
-  }
-
-  async function setPrimary(demoId: string) {
-    if (!track) return;
-    setSettingPrimaryId(demoId);
-    try {
-      const response = await apiFetch(`/api/songs/${track.id}/demos/${demoId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ setAsPrimary: true })
-      });
-      if (!response.ok) {
-        throw new Error(await readApiErrorMessage(response, "Не удалось сделать версию основной."));
-      }
-      await refetch();
-      toast.success("Основная версия обновлена.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось сделать версию основной.");
-    } finally {
-      setSettingPrimaryId(null);
     }
   }
 
@@ -328,320 +163,289 @@ export default function TrackDetailPage({ params }: { params: Promise<{ id: stri
       }
       await refetch();
       toast.success("Версия удалена.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось удалить версию.");
+    } catch (nextError) {
+      toast.error(nextError instanceof Error ? nextError.message : "Не удалось удалить версию.");
     } finally {
       setDeletingDemoId(null);
     }
   }
 
-  function playPreferredVersion() {
-    if (!track || !preferredDemo) return;
-    playback.playQueue(
-      [
-        {
-          demoId: preferredDemo.id,
-          src: preferredDemo.audioUrl || `/api/audio-clips/${preferredDemo.id}/stream`,
-          title: track.title,
-          subtitle: track.project?.title ?? "Без проекта",
-          linkHref: `/songs/${track.id}`,
-          durationSec: preferredDemo.duration,
-          trackId: track.id,
-          projectId: track.project?.id ?? null,
-          versionType: preferredDemo.versionType,
-          queueGroupType: "track",
-          queueGroupId: track.id,
-          cover: {
-            type: track.project?.coverType === "IMAGE" ? "image" : "gradient",
-            imageUrl: track.project?.coverImageUrl ?? null,
-            colorA: track.project?.coverColorA ?? null,
-            colorB: track.project?.coverColorB ?? null
-          },
-          meta: {
-            projectTitle: track.project?.title,
-            pathStageName: track.pathStage?.name
-          }
-        }
-      ],
-      0,
-      { type: "track", trackId: track.id, title: track.title }
-    );
+  async function setPrimary(demoId: string) {
+    if (!track) return;
+    setSettingPrimaryId(demoId);
+    try {
+      const response = await apiFetch(`/api/songs/${track.id}/demos/${demoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ setAsPrimary: true })
+      });
+      if (!response.ok) {
+        throw new Error(await readApiErrorMessage(response, "Не удалось обновить primary."));
+      }
+      await refetch();
+      toast.success("Primary обновлён.");
+    } catch (nextError) {
+      toast.error(nextError instanceof Error ? nextError.message : "Не удалось обновить primary.");
+    } finally {
+      setSettingPrimaryId(null);
+    }
   }
 
-  if (isLoading || !track) {
-    return <p className="text-sm text-brand-muted">Загружаем трек...</p>;
+  function playVersion(demoId: string) {
+    if (!track) return;
+    const demo = track.demos.find((item) => item.id === demoId);
+    if (!demo || !demo.audioUrl) return;
+    setSelectedDemoId(demo.id);
+    playback.play(buildTrackPlaybackItem(track, demo));
+    playback.openPlayerWindow();
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Link href={track.project?.id ? `/songs/projects/${track.project.id}` : "/songs"}>
-          <Button variant="secondary">
-            <ArrowLeft className="h-4 w-4" />
-            Назад
-          </Button>
-        </Link>
-        <Badge>{track.pathStage?.name ?? "Без стадии"}</Badge>
-      </div>
+    <>
+      <section className="space-y-6">
+        <header className="flex items-center justify-between gap-3">
+          <Link
+            href={track?.project?.releaseKind === "ALBUM" && track.project?.id ? `/songs/projects/${track.project.id}` : "/songs"}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] border border-brand-border bg-[rgba(18,7,12,0.88)] text-brand-cyan transition hover:border-brand-cyan/60 hover:text-brand-primary"
+            aria-label="Назад"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
 
-      <section className="cyber-panel rounded-[30px] px-5 py-6 md:px-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.16em] text-brand-cyan">Track Detail</p>
-            <h1 className="mt-2 font-[var(--font-display)] text-3xl uppercase tracking-[0.14em] text-brand-ink">
-              {track.title}
-            </h1>
-            <p className="mt-2 text-sm text-brand-muted">
-              {track.project?.title ? `Проект: ${track.project.title}` : "Трек без проекта"} • Обновлено {formatDate(track.updatedAt)}
-            </p>
-            <SongAnalysisBadges
-              className="mt-4"
-              bpm={track.displayBpm}
-              keyRoot={track.displayKeyRoot}
-              keyMode={track.displayKeyMode}
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => setShowCreateVersion(true)}>
-              <FilePlus2 className="h-4 w-4" />
-              Добавить версию
-            </Button>
-            <Button variant="secondary" onClick={playPreferredVersion} disabled={!preferredDemo}>
-              Play primary
+          <div className="flex gap-2">
+            {track ? (
+              <Link
+                href={`/songs/record?trackId=${track.id}`}
+                className="inline-flex h-11 items-center justify-center rounded-[14px] border border-brand-primary/60 bg-brand-primary/10 px-4 text-sm font-medium text-brand-primary transition hover:bg-brand-primary/14"
+              >
+                Новая версия
+              </Link>
+            ) : null}
+            <Button variant="secondary" onClick={() => setEditingTrack(true)} disabled={!track}>
+              <PencilLine className="h-4 w-4" />
+              Изменить
             </Button>
           </div>
-        </div>
+        </header>
+
+        {isLoading ? <p className="text-sm text-brand-muted">Загружаем трек...</p> : null}
+        {error ? <p className="rounded-[20px] border border-brand-magenta/40 bg-brand-magenta/10 px-4 py-3 text-sm text-brand-magenta">{error}</p> : null}
+
+        {track ? (
+          <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="space-y-4">
+              <div
+                className="aspect-square rounded-[30px] border border-brand-border/70 shadow-[0_26px_70px_rgba(0,0,0,0.5)]"
+                style={buildProjectCoverStyle({
+                  releaseKind: track.project?.releaseKind ?? "SINGLE",
+                  coverType: track.project?.coverType ?? "GRADIENT",
+                  coverImageUrl: track.project?.coverImageUrl ?? null,
+                  coverColorA: track.project?.coverColorA ?? "#f0dc63",
+                  coverColorB: track.project?.coverColorB ?? "#49f6ff"
+                })}
+              />
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => selectedDemo?.audioUrl && playVersion(selectedDemo.id)}
+                  disabled={!selectedDemo?.audioUrl}
+                  className="grid h-16 w-16 place-items-center rounded-full border border-white/10 bg-white text-[#111] shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Play className="ml-0.5 h-6 w-6 fill-current" />
+                </button>
+                <div className="min-w-0 flex-1 self-center">
+                  <h1 className="truncate font-[var(--font-body)] text-[2.35rem] font-semibold leading-none text-brand-ink">
+                    {track.title}
+                  </h1>
+                  <p className="mt-2 text-base text-brand-muted">
+                    {track.project?.title ?? "Сингл"} • {orderedDemos.length} версий
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-[22px] border border-brand-border/70 bg-[rgba(19,11,17,0.9)] px-5 py-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-brand-muted">Активная версия</p>
+                <p className="mt-2 text-xl font-semibold text-brand-ink">
+                  {selectedDemo ? versionLabel(selectedDemo.versionType) : "Нет версии"}
+                </p>
+                <p className="mt-2 text-sm text-brand-muted">
+                  {selectedDemo ? formatTrackTimestamp(selectedDemo.createdAt) : "Сначала создай первую запись"}
+                </p>
+              </div>
+
+              <div className="rounded-[22px] border border-brand-border/70 bg-[rgba(19,11,17,0.9)] px-5 py-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-brand-muted">Заметки</p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-brand-ink">
+                  {noteBlocks.length ? (
+                    noteBlocks.slice(0, 10).map((line) => <p key={line}>{line}</p>)
+                  ) : (
+                    <p className="text-brand-muted">Заметки к треку пока не заполнены.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {orderedDemos.length ? (
+                orderedDemos.map((demo, index) => {
+                  const isPrimary = track.primaryDemoId === demo.id;
+                  const isSelected = selectedDemoId === demo.id;
+                  const isCurrent = playback.activeItem?.demoId === demo.id;
+                  return (
+                    <div
+                      key={demo.id}
+                      className={`relative rounded-[22px] border px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.34)] ${
+                        isSelected
+                          ? "border-brand-primary/60 bg-brand-primary/10"
+                          : "border-brand-border/70 bg-[rgba(19,11,17,0.9)]"
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 shrink-0 pt-1 text-sm text-brand-muted">V{orderedDemos.length - index}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDemoId(demo.id)}
+                                className="block truncate text-left text-[1.15rem] font-semibold leading-tight text-brand-ink hover:text-brand-primary"
+                              >
+                                {versionLabel(demo.versionType)}
+                              </button>
+                              <p className="mt-1 text-sm text-brand-muted">{formatTrackTimestamp(demo.createdAt)}</p>
+                            </div>
+
+                            <div className="relative shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setMenuDemoId((prev) => (prev === demo.id ? null : demo.id))}
+                                className="grid h-10 w-10 place-items-center rounded-[14px] border border-white/10 bg-[rgba(24,19,24,0.72)] text-white/80 backdrop-blur transition hover:border-brand-cyan/40 hover:text-brand-primary"
+                                aria-label="Действия версии"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                              {menuDemoId === demo.id ? (
+                                <div className="absolute right-0 top-12 z-10 min-w-[220px] rounded-[18px] border border-brand-border bg-[rgba(12,6,10,0.98)] p-2 shadow-neon">
+                                  {demo.audioUrl ? (
+                                    <button
+                                      type="button"
+                                      className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
+                                      onClick={() => playVersion(demo.id)}
+                                    >
+                                      Играть
+                                    </button>
+                                  ) : null}
+                                  {!isPrimary && demo.audioUrl ? (
+                                    <button
+                                      type="button"
+                                      className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
+                                      onClick={() => void setPrimary(demo.id)}
+                                      disabled={settingPrimaryId === demo.id}
+                                    >
+                                      Сделать primary
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-cyan hover:bg-brand-cyan/10"
+                                    onClick={() => openEditDemo(demo)}
+                                  >
+                                    Изменить
+                                  </button>
+                                  <div className="my-1 h-px bg-brand-border/40" />
+                                  <button
+                                    type="button"
+                                    className="block w-full rounded-[14px] px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] text-brand-magenta hover:bg-brand-magenta/10"
+                                    onClick={() => void deleteDemo(demo.id)}
+                                    disabled={deletingDemoId === demo.id}
+                                  >
+                                    Удалить
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em]">
+                            {isPrimary ? (
+                              <span className="rounded-full border border-brand-primary/50 bg-brand-primary/10 px-3 py-1 text-brand-primary">
+                                Primary
+                              </span>
+                            ) : null}
+                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-brand-muted">
+                              {demo.audioUrl ? "Audio" : "Text"}
+                            </span>
+                          </div>
+
+                          <p className="mt-3 text-sm leading-6 text-brand-ink/92">{buildVersionSummary(demo)}</p>
+
+                          <div className="mt-4 flex items-center gap-2">
+                            {demo.audioUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => playVersion(demo.id)}
+                                className="inline-flex h-11 min-w-[7rem] items-center justify-center gap-2 rounded-[14px] border border-brand-primary/60 bg-brand-primary/10 px-4 text-sm font-medium text-brand-primary transition hover:bg-brand-primary/14"
+                              >
+                                <Play className="h-4 w-4 fill-current" />
+                                {isCurrent && playback.playing ? "Играет" : "Играть"}
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDemoId(demo.id)}
+                              className="inline-flex h-11 items-center justify-center rounded-[14px] border border-white/10 bg-white/5 px-4 text-sm font-medium text-brand-ink transition hover:border-brand-cyan/40 hover:text-brand-primary"
+                            >
+                              Выбрать
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-[24px] border border-brand-border/70 bg-[rgba(19,11,17,0.9)] px-5 py-6 text-sm text-brand-muted">
+                  У трека пока нет версий.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <Card className="cyber-panel rounded-[28px] bg-[rgba(14,22,40,0.94)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-brand-cyan">Metadata</p>
-              <h2 className="mt-1 font-[var(--font-display)] text-xl uppercase tracking-[0.12em] text-brand-ink">
-                Трек
-              </h2>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <Input value={trackTitle} onChange={(event) => setTrackTitle(event.target.value)} placeholder="Название трека" />
-            <Textarea
-              value={lyricsText}
-              onChange={(event) => setLyricsText(event.target.value)}
-              placeholder="Текст, заметки, структура"
-              rows={10}
-            />
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => void saveTrackMeta()} disabled={savingTrack}>
-                {savingTrack ? "Сохраняем..." : "Сохранить метаданные"}
-              </Button>
-              {track.project?.id ? (
-                <Link href={`/songs/projects/${track.project.id}`}>
-                  <Button variant="secondary">Открыть проект</Button>
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        </Card>
-
-        <Card className="cyber-panel rounded-[28px] bg-[rgba(14,22,40,0.94)]">
-          <p className="text-xs uppercase tracking-[0.16em] text-brand-magenta">Primary Version</p>
-          <h2 className="mt-1 font-[var(--font-display)] text-xl uppercase tracking-[0.12em] text-brand-ink">
-            Текущий master
-          </h2>
-          {track.primaryDemo ? (
-            <div className="mt-4 space-y-3">
-              <Badge>{versionLabel(track.primaryDemo.versionType)}</Badge>
-              {track.primaryDemo.audioUrl ? <AudioWaveformPlayer src={track.primaryDemo.audioUrl} /> : null}
-              <p className="text-sm text-brand-muted">
-                Создано {formatDate(track.primaryDemo.createdAt)}
-                {track.primaryDemo.releaseDate ? ` • релиз ${track.primaryDemo.releaseDate}` : ""}
-              </p>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-brand-muted">Основная аудио-версия ещё не выбрана.</p>
-          )}
-        </Card>
-      </div>
-
-      <Card className="cyber-panel rounded-[28px] bg-[rgba(14,22,40,0.94)]">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-brand-cyan">Versions</p>
-            <h2 className="mt-1 font-[var(--font-display)] text-xl uppercase tracking-[0.12em] text-brand-ink">
-              История версий
-            </h2>
-          </div>
-          <Badge>{track.demos.length} всего</Badge>
-        </div>
-
-        <div className="mt-4 space-y-4">
-          {track.demos.length ? (
-            track.demos.map((demo) => {
-              const isPrimary = track.primaryDemoId === demo.id;
-              return (
-                <div
-                  key={demo.id}
-                  className="rounded-[24px] border border-brand-border bg-[rgba(10,18,34,0.84)] p-4"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge>{versionLabel(demo.versionType)}</Badge>
-                        {isPrimary ? <Badge className="bg-[rgba(248,239,0,0.16)] text-brand-primary">Primary</Badge> : null}
-                        {demo.releaseDate ? (
-                          <Badge className="bg-[rgba(255,79,216,0.12)] text-brand-magenta">
-                            <Radio className="mr-1 h-3 w-3" />
-                            {demo.releaseDate}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <p className="mt-3 text-sm text-brand-muted">{formatDate(demo.createdAt)}</p>
-                      {demo.audioUrl ? <div className="mt-4"><AudioWaveformPlayer src={demo.audioUrl} /></div> : null}
-                      {demo.textNote ? <p className="mt-3 text-sm text-brand-ink">{demo.textNote}</p> : null}
-                      {demo.versionReflection?.whyMade ? (
-                        <p className="mt-3 text-sm text-brand-muted">
-                          <span className="text-brand-cyan">Почему:</span> {demo.versionReflection.whyMade}
-                        </p>
-                      ) : null}
-                      {demo.versionReflection?.whatChanged ? (
-                        <p className="mt-2 text-sm text-brand-muted">
-                          <span className="text-brand-cyan">Что изменили:</span> {demo.versionReflection.whatChanged}
-                        </p>
-                      ) : null}
-                      {demo.versionReflection?.whatNotWorking ? (
-                        <p className="mt-2 text-sm text-brand-muted">
-                          <span className="text-brand-magenta">Что не работает:</span> {demo.versionReflection.whatNotWorking}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {!isPrimary && demo.audioUrl ? (
-                        <Button
-                          variant="secondary"
-                          disabled={settingPrimaryId === demo.id}
-                          onClick={() => void setPrimary(demo.id)}
-                        >
-                          {settingPrimaryId === demo.id ? "..." : "Make primary"}
-                        </Button>
-                      ) : null}
-                      <Button variant="secondary" onClick={() => openEditDemo(demo)}>
-                        <PencilLine className="h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        disabled={deletingDemoId === demo.id}
-                        onClick={() => void deleteDemo(demo.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        {deletingDemoId === demo.id ? "..." : "Delete"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-sm text-brand-muted">Пока нет сохранённых версий.</p>
-          )}
-        </div>
-      </Card>
-
-      <Modal
-        open={showCreateVersion}
-        onClose={() => {
-          setShowCreateVersion(false);
-          resetCreateVersionModal();
-        }}
-        title="Новая версия"
-        widthClassName="max-w-4xl"
-      >
+      <Modal open={editingTrack} onClose={() => setEditingTrack(false)} title="Изменить трек" widthClassName="max-w-xl">
         <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            <Select value={newVersionType} onChange={(event) => setNewVersionType(event.target.value as DemoVersionType)}>
-              {stages.map((stage) => (
-                <option key={stage.id} value={stage.versionType}>
-                  {stage.name}
-                </option>
-              ))}
-            </Select>
-
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant={newVersionMode === "upload" ? "primary" : "secondary"} onClick={() => setNewVersionMode("upload")}>
-                Upload
-              </Button>
-              <Button type="button" variant={newVersionMode === "record" ? "primary" : "secondary"} onClick={() => setNewVersionMode("record")}>
-                Record
-              </Button>
-              <Button type="button" variant={newVersionMode === "text" ? "primary" : "secondary"} onClick={() => {
-                setNewVersionMode("text");
-                setNewVersionType("IDEA_TEXT");
-              }}>
-                Text only
-              </Button>
-            </div>
-          </div>
-
-          {newVersionMode === "upload" ? (
-            <Input type="file" accept="audio/*" onChange={(event) => setNewVersionFile(event.target.files?.[0] ?? null)} />
-          ) : null}
-
-          {newVersionMode === "record" ? (
-            <MultiTrackRecorder
-              onReady={(payload) => {
-                setRecordedMix(payload);
-                recorderErrorRef.current = "";
-              }}
-              onError={(message) => {
-                recorderErrorRef.current = message;
-              }}
-            />
-          ) : null}
-
-          <Textarea value={newVersionNote} onChange={(event) => setNewVersionNote(event.target.value)} placeholder="Заметка к версии" rows={3} />
-          <Textarea value={newVersionWhyMade} onChange={(event) => setNewVersionWhyMade(event.target.value)} placeholder="Почему сделали эту версию" rows={2} />
-          <Textarea value={newVersionWhatChanged} onChange={(event) => setNewVersionWhatChanged(event.target.value)} placeholder="Что изменили" rows={2} />
-          <Textarea value={newVersionWhatNotWorking} onChange={(event) => setNewVersionWhatNotWorking(event.target.value)} placeholder="Что ещё не работает" rows={2} />
-          {newVersionType === "RELEASE" ? (
-            <Input type="date" value={newVersionReleaseDate} onChange={(event) => setNewVersionReleaseDate(event.target.value)} />
-          ) : null}
-
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button variant="secondary" onClick={() => setShowCreateVersion(false)}>
+          <Input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="Название трека" />
+          <Textarea value={draftLyrics} onChange={(event) => setDraftLyrics(event.target.value)} placeholder="Заметки, текст, структура" rows={12} />
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setEditingTrack(false)}>
               Отмена
             </Button>
-            <Button onClick={() => void createVersion()} disabled={creatingVersion}>
-              {creatingVersion ? "Сохраняем..." : "Сохранить версию"}
+            <Button onClick={() => void saveTrack()} disabled={savingTrack}>
+              {savingTrack ? "Сохраняем..." : "Сохранить"}
             </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal
-        open={Boolean(editingDemoId)}
-        onClose={() => setEditingDemoId(null)}
-        title="Редактировать версию"
-      >
+      <Modal open={Boolean(editingDemoId)} onClose={() => setEditingDemoId(null)} title="Изменить версию">
         <div className="space-y-4">
-          <Select value={editVersionType} onChange={(event) => setEditVersionType(event.target.value as DemoVersionType)}>
+          <Select value={editVersionType} onChange={(event) => setEditVersionType(event.target.value)}>
             {stages.map((stage) => (
               <option key={stage.id} value={stage.versionType}>
                 {stage.name}
               </option>
             ))}
           </Select>
-          <Textarea value={editVersionNote} onChange={(event) => setEditVersionNote(event.target.value)} placeholder="Заметка" rows={3} />
-          <Textarea value={editVersionWhyMade} onChange={(event) => setEditVersionWhyMade(event.target.value)} placeholder="Почему сделали" rows={2} />
-          <Textarea value={editVersionWhatChanged} onChange={(event) => setEditVersionWhatChanged(event.target.value)} placeholder="Что изменили" rows={2} />
-          <Textarea value={editVersionWhatNotWorking} onChange={(event) => setEditVersionWhatNotWorking(event.target.value)} placeholder="Что не работает" rows={2} />
+          <Textarea value={editVersionNote} onChange={(event) => setEditVersionNote(event.target.value)} placeholder="Заметка версии" rows={3} />
+          <Textarea value={editVersionWhyMade} onChange={(event) => setEditVersionWhyMade(event.target.value)} placeholder="Зачем делалась эта версия" rows={2} />
+          <Textarea value={editVersionWhatChanged} onChange={(event) => setEditVersionWhatChanged(event.target.value)} placeholder="Что поменялось" rows={2} />
+          <Textarea value={editVersionWhatNotWorking} onChange={(event) => setEditVersionWhatNotWorking(event.target.value)} placeholder="Что ещё не работает" rows={2} />
           {editVersionType === "RELEASE" ? (
             <Input type="date" value={editVersionReleaseDate} onChange={(event) => setEditVersionReleaseDate(event.target.value)} />
           ) : null}
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setEditingDemoId(null)}>
               Отмена
             </Button>
@@ -651,6 +455,6 @@ export default function TrackDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
